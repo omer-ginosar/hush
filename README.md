@@ -1,4 +1,4 @@
-# hush — Advisory Data Pipeline (Handoff)
+# 🌑 Hush — Advisory Data Pipeline
 
 This repo is a lightweight handoff for the Echo advisory pipeline task. It captures the expected architecture, decision logic, and open questions so another agent can implement the prototype quickly and correctly.
 
