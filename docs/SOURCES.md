@@ -44,3 +44,7 @@ This doc answers how OSV and NVD behave, how we query them, and how we normalize
 3. NVD for rejection/withdrawal status or metadata.
 4. Freshness tie-breaker: prefer the newest evidence in conflicts.
 
+## Ecosystem fallback (recommended)
+- Default OSV ecosystem to `Debian` for this dataset.
+- If Debian yields no results for a package, try `Ubuntu` as a fallback.
+- Always record which ecosystem was used in the evidence payload.

@@ -53,7 +53,7 @@ The decision engine produces a single, explainable state for each advisory `(pac
 - Insert a new row only when the computed state differs from the current state.
 - Close previous row with `effective_to` and `is_current=0`.
 - New row gets `effective_from` and `is_current=1`.
+- Populate `state_type` as `final` for `fixed` and `not_applicable` (and `wont_fix` if introduced); otherwise `non_final`.
 
 ## Open question
 - CSV `fixed_version` when `status=not_applicable` is retained as a TODO (see `docs/OPEN_QUESTIONS.md`).
-

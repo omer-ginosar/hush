@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS advisory_state_history (
   package TEXT NOT NULL,
   cve_id TEXT NOT NULL,
   state TEXT NOT NULL,
+  state_type TEXT NOT NULL,
   fixed_version TEXT,
   explanation TEXT NOT NULL,
   reason_code TEXT,
@@ -31,6 +32,9 @@ CREATE INDEX IF NOT EXISTS idx_advisory_package
 CREATE INDEX IF NOT EXISTS idx_advisory_state
   ON advisory_state_history(state);
 
+CREATE INDEX IF NOT EXISTS idx_advisory_state_type
+  ON advisory_state_history(state_type);
+
 CREATE TABLE IF NOT EXISTS run_metadata (
   run_id TEXT PRIMARY KEY,
   started_at TEXT NOT NULL,
@@ -53,4 +57,3 @@ CREATE VIEW IF NOT EXISTS advisory_current AS
 SELECT *
 FROM advisory_state_history
 WHERE is_current = 1;
-
