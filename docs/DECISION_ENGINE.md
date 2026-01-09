@@ -23,7 +23,7 @@ The decision engine produces a single, explainable state for each advisory `(pac
 
 ## Rule priority (deterministic)
 1. **CSV override**  
-   If `(package, cve_id)` exists in CSV, set state to `not_applicable`.  
+   If `(package, cve_id)` exists in CSV, set state to `not_applicable` (global to Echo).  
    Explanation includes `internal_status` and CSV timestamp.
 2. **Upstream rejected/withdrawn**  
    If NVD `vulnStatus=Rejected` or OSV `withdrawn`, set state to `not_applicable`.  
@@ -31,11 +31,19 @@ The decision engine produces a single, explainable state for each advisory `(pac
 3. **Fix found (OSV)**  
    If OSV contains a `fixed` version for the package, set state to `fixed` with `fixed_version`.  
    Explanation cites OSV range and fixed version.
-4. **Fallback**  
+4. **Explicit upstream wont_fix**  
+   If upstream maintainers explicitly decline to fix (vendor advisory or maintainer statement), set `wont_fix`.  
+   Explanation cites the upstream source and statement.
+5. **Fallback**  
    Otherwise set `pending_upstream`.
 
+## State definitions
+- `not_applicable`: global to Echo (not per-customer); the affected component does not exist in the Echo ecosystem.
+- `wont_fix`: upstream acknowledges the issue but explicitly declines to patch.
+- `pending_upstream`: intermediate state; SLA clock starts only when a fix exists.
+
 ## State transitions
-- `unknown` -> `pending_upstream` -> `fixed` / `not_applicable`
+- `unknown` -> `pending_upstream` -> `fixed` / `wont_fix` / `not_applicable`
 - CSV and upstream evidence can move an advisory from any non-final state to a final state.
 - Final states only re-open if upstream evidence or CSV explicitly changes.
 
@@ -46,14 +54,16 @@ The decision engine produces a single, explainable state for each advisory `(pac
   "Marked not applicable based on {source} status {status} on {date}."
 - `fixed`:  
   "Fix identified from OSV for {package} at version {fixed_version} (range {range})."
+- `wont_fix`:  
+  "Upstream maintainers declined to fix this issue (source {source}, {date})."
 - `pending_upstream`:  
-  "No fix found in upstream sources; awaiting further updates."
+  "No fix found in upstream sources; awaiting further updates (SLA starts once a fix exists)."
 
 ## SCD2 persistence
 - Insert a new row only when the computed state differs from the current state.
 - Close previous row with `effective_to` and `is_current=0`.
 - New row gets `effective_from` and `is_current=1`.
-- Populate `state_type` as `final` for `fixed` and `not_applicable` (and `wont_fix` if introduced); otherwise `non_final`.
+- Populate `state_type` as `final` for `fixed`, `not_applicable`, and `wont_fix`; otherwise `non_final`.
 
 ## Open question
 - CSV `fixed_version` when `status=not_applicable` is retained as a TODO (see `docs/OPEN_QUESTIONS.md`).

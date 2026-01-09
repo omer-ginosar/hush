@@ -16,6 +16,8 @@ This repo is a lightweight handoff for the Echo advisory pipeline task. It captu
 - CSV is authoritative for `not_applicable` (all CSV rows map to that state).
 - OSV and NVD are used as upstream sources; design must scale to more.
 - SQLite is the storage layer; advisory history is SCD2.
+- `wont_fix` is treated as a final state when upstream explicitly declines a fix.
+- `not_applicable` is global to Echo (not per-customer).
 - CSV `fixed_version` is retained as an open question (see `docs/OPEN_QUESTIONS.md`).
 
 **Repository layout**

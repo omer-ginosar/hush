@@ -15,20 +15,20 @@ Sources -> Ingestion -> Normalization -> Enrichment -> Decisioning -> Storage ->
 - **Ingestion**: load `data.json` + CSV, validate schema, compute deltas.
 - **Normalization**: canonical keys, CVE normalization, exclude non-CVE IDs from NVD.
 - **Enrichment adapters**: OSV (package + ecosystem), NVD (CVE id).
-- **Decision engine**: deterministic rules with explainability.
+- **Decision engine**: deterministic rules with explainability; `not_applicable` is global to Echo and `pending_upstream` is non-final.
 - **Storage**: SQLite with SCD2 history and a current-state view.
 - **Publish**: materialize a view or JSON output for consumption.
 
 ## Data model (high level)
 - `advisory_state_history` (SCD2)
-  - `advisory_id`, `package`, `cve_id`, `state`, `fixed_version`
+  - `advisory_id`, `package`, `cve_id`, `state`, `state_type`, `fixed_version`
   - `explanation`, `reason_code`, `evidence_json`, `decision_rule`
   - `effective_from`, `effective_to`, `is_current`, `run_id`
 - `advisory_current` (view)
   - `SELECT * FROM advisory_state_history WHERE is_current=1`
 
 ## Efficiency
-- Skip processing for final states unless CSV changes or upstream TTL expires.
+- Skip processing for final states (`fixed`, `wont_fix`, `not_applicable`) unless CSV changes or upstream TTL expires.
 - Cache upstream responses by `cve_id` (NVD) and `(ecosystem, package)` (OSV).
 - Backoff and retry for upstream errors; keep partial progress.
 
@@ -36,4 +36,3 @@ Sources -> Ingestion -> Normalization -> Enrichment -> Decisioning -> Storage ->
 - Persist run metadata (counts by state, enriched count, failures).
 - Alert on stalled CVEs (no state change for long windows).
 - Detect data regressions (schema drift, missing fields).
-

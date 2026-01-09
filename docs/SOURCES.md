@@ -44,6 +44,11 @@ This doc answers how OSV and NVD behave, how we query them, and how we normalize
 3. NVD for rejection/withdrawal status or metadata.
 4. Freshness tie-breaker: prefer the newest evidence in conflicts.
 
+## Wont_fix signals (gap)
+- OSV and NVD do not consistently encode "wont_fix" decisions.
+- In production, this likely requires distro advisories or maintainer issue trackers.
+- For the prototype, treat `wont_fix` as a supported state but expect low coverage.
+
 ## Ecosystem fallback (recommended)
 - Default OSV ecosystem to `Debian` for this dataset.
 - If Debian yields no results for a package, try `Ubuntu` as a fallback.
