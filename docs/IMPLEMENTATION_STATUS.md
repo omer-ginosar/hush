@@ -249,18 +249,60 @@ Total: 8 tests, 8 passed
 
 ---
 
-### ⏳ Phase 7: Orchestration (PENDING)
+### ✅ Phase 7: Main Orchestrator (COMPLETE)
 
-**Scope**: Pipeline orchestration and demonstration
+**Completed**: 2026-01-11
+**Branch**: `feature/phase7-main-orchestrator`
 
-**Components**:
-- Main pipeline runner (`run_pipeline.py`)
-- Multi-run demo (`demo.py`)
-- Output generation
+**Deliverables**:
+- ✓ Main pipeline orchestrator (`run_pipeline.py`) - 389 lines
+- ✓ Multi-run demonstration script (`demo.py`) - 388 lines
+- ✓ Comprehensive documentation (`PHASE7_README.md`) - 383 lines
+- ✓ Implementation summary (`docs/PHASE7_IMPLEMENTATION_SUMMARY.md`)
+
+**Key Design Decisions**:
+1. **Linear Execution**: Six-stage sequential flow for simplicity
+2. **Fail-Safe Ingestion**: Source failures don't halt entire run
+3. **dbt Subprocess**: Uses dbt CLI for stability
+4. **Observable**: Comprehensive logging and metrics
+5. **Idempotent**: Safe to re-run with same inputs
+
+**Pipeline Stages**:
+1. Database initialization (schema creation)
+2. Source ingestion (all four adapters)
+3. dbt transformations (staging → intermediate → marts)
+4. Output export (advisory_current.json)
+5. Quality checks (6 SQL-based validations)
+6. Report generation (Markdown reports)
+
+**Demo Features**:
+- Run 1: Initial load (baseline state)
+- Run 2: CSV override (analyst priority demonstration)
+- Run 3: Upstream fix (state transition demonstration)
+- State history visualization
+- Progressive data changes
 
 **Interface Contract**:
-- Input: Configuration + source data
-- Output: `advisory_current.json`, `advisory_history.json`, run reports
+- Input: `config.yaml` + source data files
+- Output:
+  - `output/advisory_current.json` (current advisory states)
+  - `output/run_report_*.md` (execution reports)
+  - `advisory_pipeline.duckdb` (full state history)
+
+**Integration Points**:
+- Phase 2: All four adapters (echo_data, echo_csv, nvd, osv)
+- Phase 3: Database, SourceLoader
+- Phase 4: dbt subprocess execution
+- Phase 6: RunMetrics, QualityChecker, RunReporter
+
+**Known Limitations**:
+- Sequential source fetching (no parallelism)
+- No retry logic for failed sources
+- Full refresh (no incremental processing)
+- dbt subprocess call (not Python API)
+- No state rollback on failure
+
+**Next Steps**: Production deployment, operational hardening
 
 ---
 
@@ -373,4 +415,4 @@ class SourceObservation:
 ---
 
 **Last Updated**: 2026-01-11
-**Updated By**: Phase 6 Implementation Agent
+**Updated By**: Phase 7 Implementation Agent
