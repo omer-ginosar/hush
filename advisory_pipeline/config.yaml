@@ -1,0 +1,84 @@
+pipeline:
+  name: "echo_advisory_pipeline"
+  version: "0.1.0"
+
+database:
+  path: "advisory_pipeline.duckdb"
+
+sources:
+  echo_data:
+    type: "json"
+    # Fallback to local cache if network unavailable
+    url: null  # Replace with actual Echo data.json URL when available
+    cache_path: "../data.json"
+
+  echo_csv:
+    type: "csv"
+    path: "../advisory_not_applicable.csv"
+
+  nvd:
+    type: "mock"
+    mock_file: "ingestion/mock_responses/nvd_responses.json"
+
+  osv:
+    type: "mock"
+    mock_file: "ingestion/mock_responses/osv_responses.json"
+
+rules:
+  - id: "R0"
+    name: "csv_override"
+    priority: 0
+    reason_code: "CSV_OVERRIDE"
+
+  - id: "R1"
+    name: "nvd_rejected"
+    priority: 1
+    reason_code: "NVD_REJECTED"
+
+  - id: "R2"
+    name: "upstream_fix"
+    priority: 2
+    reason_code: "UPSTREAM_FIX"
+
+  - id: "R3"
+    name: "distro_not_affected"
+    priority: 3
+    reason_code: "DISTRO_NOT_AFFECTED"
+
+  - id: "R4"
+    name: "distro_wont_fix"
+    priority: 4
+    reason_code: "DISTRO_WONT_FIX"
+
+  - id: "R5"
+    name: "under_investigation"
+    priority: 5
+    reason_code: "NEW_CVE"
+
+  - id: "R6"
+    name: "pending_upstream"
+    priority: 6
+    reason_code: "AWAITING_FIX"
+
+states:
+  final:
+    - "fixed"
+    - "not_applicable"
+    - "wont_fix"
+  non_final:
+    - "pending_upstream"
+    - "under_investigation"
+    - "unknown"
+
+staleness:
+  warning_threshold_days: 60
+  critical_threshold_days: 90
+
+explanation_templates:
+  CSV_OVERRIDE: "Marked as not applicable by Echo security team. Reason: {csv_reason}. Updated: {csv_updated_at}."
+  NVD_REJECTED: "This CVE has been rejected by the National Vulnerability Database. Rejection reason: {nvd_rejection_reason}."
+  UPSTREAM_FIX: "Fixed in version {fixed_version}. Source: {fix_source}. Reference: {fix_url}."
+  DISTRO_NOT_AFFECTED: "Not affected in {distro}. Reason: {distro_notes}."
+  DISTRO_WONT_FIX: "{distro} has marked this as will not fix. Reason: {distro_notes}."
+  NEW_CVE: "Recently published CVE under analysis. First observed: {first_seen}. Awaiting upstream signals."
+  AWAITING_FIX: "No fix currently available upstream. Last checked: {last_checked}. Sources consulted: {sources_list}."

@@ -7,3 +7,22 @@ __pycache__/
 .env
 .vscode/
 .claude/
+
+# Pipeline artifacts
+advisory_pipeline/*.duckdb
+advisory_pipeline/*.duckdb.wal
+advisory_pipeline/output/*
+!advisory_pipeline/output/.gitkeep
+
+# dbt artifacts
+advisory_pipeline/dbt_project/target/
+advisory_pipeline/dbt_project/dbt_packages/
+advisory_pipeline/dbt_project/logs/
+
+# Python virtual environment
+venv/
+.venv/
+env/
+
+# Pytest cache
+.pytest_cache/
