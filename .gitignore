@@ -18,6 +18,7 @@ advisory_pipeline/output/*
 advisory_pipeline/dbt_project/target/
 advisory_pipeline/dbt_project/dbt_packages/
 advisory_pipeline/dbt_project/logs/
+advisory_pipeline/dbt_project/.user.yml
 
 # Python virtual environment
 venv/
