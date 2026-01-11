@@ -251,6 +251,10 @@ class AdvisoryPipeline:
         if not dbt_dir.exists():
             raise RuntimeError(f"dbt project directory not found: {dbt_dir}")
 
+        # Close database connection before dbt runs
+        # This prevents DuckDB locking issues
+        self.db.close()
+
         # Set run ID as environment variable for dbt
         env = os.environ.copy()
         env["PIPELINE_RUN_ID"] = run_id
@@ -263,6 +267,9 @@ class AdvisoryPipeline:
             capture_output=True,
             text=True
         )
+
+        # Reconnect database after dbt completes
+        self.db.connect()
 
         if result.returncode != 0:
             logger.error(f"dbt stdout:\n{result.stdout}")
@@ -303,7 +310,7 @@ class AdvisoryPipeline:
                 dissenting_sources,
                 decided_at,
                 run_id
-            FROM mart_advisory_current
+            FROM main_marts.mart_advisory_current
         """).fetchall()
 
         # Convert to list of dictionaries
@@ -360,7 +367,7 @@ class AdvisoryPipeline:
         # Get state distribution
         state_results = conn.execute("""
             SELECT state, count(*)
-            FROM mart_advisory_current
+            FROM main_marts.mart_advisory_current
             GROUP BY state
         """).fetchall()
 
@@ -368,7 +375,7 @@ class AdvisoryPipeline:
 
         # Get total count
         total = conn.execute("""
-            SELECT count(*) FROM mart_advisory_current
+            SELECT count(*) FROM main_marts.mart_advisory_current
         """).fetchone()[0]
 
         metrics.advisories_total = total

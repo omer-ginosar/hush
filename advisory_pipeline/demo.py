@@ -280,7 +280,7 @@ def show_state_distribution(db: Database):
     conn = db.connect()
     results = conn.execute("""
         SELECT state, count(*) as count
-        FROM mart_advisory_current
+        FROM main_marts.mart_advisory_current
         GROUP BY state
         ORDER BY count DESC
     """).fetchall()
@@ -299,7 +299,7 @@ def show_cve_history(db: Database, cve_id: str):
             reason_code,
             decided_at,
             run_id
-        FROM mart_advisory_current
+        FROM main_marts.mart_advisory_current
         WHERE cve_id = ?
     """, [cve_id]).fetchall()
 
@@ -338,10 +338,12 @@ def run_demo():
 
     pipeline = AdvisoryPipeline()
     metrics1 = pipeline.run()
+    pipeline.db.close()  # Close DB connection after run
 
     db = Database()
     show_state_distribution(db)
     show_cve_history(db, "CVE-2024-0001")
+    db.close()
 
     print(f"\nResult: {metrics1.advisories_total} advisories processed")
 
@@ -355,9 +357,12 @@ def run_demo():
 
     pipeline2 = AdvisoryPipeline()
     metrics2 = pipeline2.run()
+    pipeline2.db.close()  # Close DB connection after run
 
+    db = Database()
     show_state_distribution(db)
     show_cve_history(db, "CVE-2024-0002")
+    db.close()
 
     print(f"\nResult: {metrics2.state_changes} state change(s)")
 
@@ -371,9 +376,12 @@ def run_demo():
 
     pipeline3 = AdvisoryPipeline()
     metrics3 = pipeline3.run()
+    pipeline3.db.close()  # Close DB connection after run
 
+    db = Database()
     show_state_distribution(db)
     show_cve_history(db, "CVE-2024-0004")
+    db.close()
 
     print(f"\nResult: {metrics3.state_changes} state change(s)")
 
@@ -391,8 +399,6 @@ def run_demo():
     print(f"  - Review output/advisory_current.json for current state")
     print(f"  - Read output/run_report_*.md for detailed metrics")
     print("=" * 70 + "\n")
-
-    db.close()
 
 
 if __name__ == "__main__":

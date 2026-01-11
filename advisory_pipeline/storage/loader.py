@@ -51,8 +51,8 @@ class SourceLoader:
         """
         conn = self.db.connect()
 
-        # Clear previous run's data for idempotent loads
-        conn.execute("DELETE FROM raw_echo_advisories WHERE run_id = ?", [run_id])
+        # Clear all previous data (truncate and reload pattern for idempotency)
+        conn.execute("DELETE FROM raw_echo_advisories")
 
         loaded = 0
         for obs in observations:
@@ -88,7 +88,7 @@ class SourceLoader:
             Number of records loaded
         """
         conn = self.db.connect()
-        conn.execute("DELETE FROM raw_echo_csv WHERE run_id = ?", [run_id])
+        conn.execute("DELETE FROM raw_echo_csv")
 
         loaded = 0
         for obs in observations:
@@ -124,7 +124,7 @@ class SourceLoader:
             Number of records loaded
         """
         conn = self.db.connect()
-        conn.execute("DELETE FROM raw_nvd_observations WHERE run_id = ?", [run_id])
+        conn.execute("DELETE FROM raw_nvd_observations")
 
         loaded = 0
         for obs in observations:
@@ -161,7 +161,7 @@ class SourceLoader:
             Number of records loaded
         """
         conn = self.db.connect()
-        conn.execute("DELETE FROM raw_osv_observations WHERE run_id = ?", [run_id])
+        conn.execute("DELETE FROM raw_osv_observations")
 
         loaded = 0
         for obs in observations:
