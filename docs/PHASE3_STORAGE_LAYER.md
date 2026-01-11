@@ -2,7 +2,9 @@
 
 ## Overview
 
-Phase 3 implements the storage layer for the CVE Advisory Pipeline using DuckDB with SCD Type 2 (Slowly Changing Dimension) history tracking. This layer provides data persistence, state management, and temporal query capabilities.
+Phase 3 implements the storage layer for the CVE Advisory Pipeline using DuckDB. This layer provides data persistence for raw source observations and creates the foundation for dbt transformations in Phase 4.
+
+**Key Architectural Decision:** State history tracking uses dbt snapshots (Phase 4) rather than Python-managed SCD2. This follows the standard dbt pattern and maintains clean separation of concerns.
 
 ## Components Delivered
 
@@ -13,7 +15,7 @@ Phase 3 implements the storage layer for the CVE Advisory Pipeline using DuckDB 
 **Key Features:**
 - DuckDB connection lifecycle management
 - Schema creation for raw landing zone tables
-- SCD Type 2 state history table
+- Advisory state history table (populated by dbt snapshots in Phase 4)
 - Pipeline run metadata tracking
 - Indexed for query performance
 
@@ -22,7 +24,7 @@ Phase 3 implements the storage layer for the CVE Advisory Pipeline using DuckDB 
 - `raw_echo_csv`: Internal analyst overrides
 - `raw_nvd_observations`: NVD CVE data
 - `raw_osv_observations`: OSV vulnerability data
-- `advisory_state_history`: SCD Type 2 state tracking
+- `advisory_state_history`: SCD Type 2 state tracking (for dbt snapshots)
 - `pipeline_runs`: Pipeline execution metadata
 
 **Usage:**
@@ -39,6 +41,7 @@ run_id = db.get_current_run_id()
 - JSON columns for complex payloads and evidence
 - Quoted "references" column name (DuckDB reserved keyword)
 - Standard indexes (no partial indexes due to DuckDB limitations)
+- advisory_state_history table created for dbt, not populated by Python
 
 ### 2. Source Loader (`storage/loader.py`)
 
@@ -56,6 +59,7 @@ from storage import SourceLoader
 
 loader = SourceLoader(db)
 count = loader.load_echo_advisories(observations, run_id)
+
 # Or load all sources at once
 counts = loader.load_all(echo_obs, csv_obs, nvd_obs, osv_obs, run_id)
 ```
@@ -64,63 +68,6 @@ counts = loader.load_all(echo_obs, csv_obs, nvd_obs, osv_obs, run_id)
 - Separate methods per source for clarity
 - Idempotent loads via run_id-based deletion
 - Returns count of loaded records for observability
-
-### 3. SCD2 Manager (`storage/scd2_manager.py`)
-
-**Purpose:** Manage advisory state history with temporal tracking
-
-**Key Features:**
-- State change detection
-- Automatic history record management
-- Point-in-time queries
-- Full change history retrieval
-
-**Key Operations:**
-- `get_current_state()`: Get active state for an advisory
-- `has_state_changed()`: Detect meaningful changes
-- `apply_state()`: Write new state, manage SCD2 history
-- `get_state_at_time()`: Query historical state
-- `get_history()`: Full change history
-
-**Usage:**
-```python
-from storage import SCD2Manager, AdvisoryState
-
-scd2 = SCD2Manager(db)
-
-state = AdvisoryState(
-    advisory_id="pkg:CVE-2024-0001",
-    cve_id="CVE-2024-0001",
-    package_name="pkg",
-    state="fixed",
-    state_type="final",
-    fixed_version="1.2.3",
-    confidence="high",
-    explanation="Fixed in version 1.2.3",
-    reason_code="UPSTREAM_FIX",
-    evidence={"fixed_version": "1.2.3"},
-    decision_rule="R2:upstream_fix",
-    contributing_sources=["osv"],
-    dissenting_sources=[],
-    staleness_score=0.0
-)
-
-changed = scd2.apply_state(state, run_id)
-```
-
-**SCD Type 2 Pattern:**
-- Each state change creates a new record
-- Previous record is closed with `effective_to` timestamp
-- `is_current=TRUE` flag marks active state
-- Only one current record per advisory
-- Enables point-in-time queries and audit trails
-
-**Change Detection:**
-Changes that trigger new history record:
-- State change (e.g., pending_upstream → fixed)
-- Fixed version change
-- Confidence level change
-- Reason code change
 
 ## Testing
 
@@ -131,10 +78,7 @@ Comprehensive test suite in `tests/test_storage.py`:
 - Run ID generation format
 - Source observation loading
 - Loader idempotency
-- SCD2 first state creation
-- SCD2 state transitions
-- SCD2 skip unchanged states
-- Point-in-time queries
+- Multi-source batch loading
 
 **Run Tests:**
 ```bash
@@ -142,7 +86,7 @@ cd advisory_pipeline
 python3 -m pytest tests/test_storage.py -v
 ```
 
-**Test Results:** All 8 tests passing
+**Test Results:** All 5 tests passing
 
 ## Integration Points
 
@@ -151,26 +95,50 @@ python3 -m pytest tests/test_storage.py -v
 - Maps normalized observations to raw table schemas
 - Preserves raw payloads for auditability
 
-### With Phase 4 (dbt Layer) - Future
+### With Phase 4 (dbt Layer)
 - Raw tables serve as dbt sources
-- dbt reads from raw_* tables
-- dbt can read advisory_state_history
-- Python writes state changes, dbt generates decisions
+- dbt reads from raw_* tables for transformations
+- dbt snapshots populate advisory_state_history
+- Python only handles ingestion, dbt handles all transformations
 
-### With Phase 5 (Decisioning) - Future
-- Decisioning produces `AdvisoryState` objects
-- SCD2Manager persists state with history
-- Enables temporal queries for analysis
+## Architectural Decision: Why No Python SCD2?
+
+**The Question:** Why not use Python to manage SCD Type 2 state history?
+
+**The Answer:** dbt snapshots are the standard pattern for this:
+
+### dbt-Native Approach (Implemented)
+```
+Ingestion → Raw Tables → dbt Transformations → dbt Snapshots → Output
+```
+
+**Advantages:**
+- ✅ Standard dbt pattern
+- ✅ Clean separation of concerns (Python = ingestion, dbt = transformation)
+- ✅ Simpler codebase
+- ✅ SQL-native temporal logic
+- ✅ Easier to maintain and extend
+
+### Python-Managed Alternative (Not Implemented)
+```
+Ingestion → Raw Tables → dbt → Python Decisioning → Python SCD2 → Output
+```
+
+**Why we didn't choose this:**
+- ❌ Duplicates dbt functionality
+- ❌ Mixes concerns (Python doing transformation)
+- ❌ More complex
+- ❌ Non-standard pattern
+
+**Conclusion:** For a production-quality prototype, the dbt-native approach demonstrates better architectural understanding.
 
 ## Known Limitations
 
-1. **Partial Indexes:** DuckDB doesn't support partial indexes (WHERE clause), so the `is_current` index includes all rows rather than only current ones
+1. **Partial Indexes:** DuckDB doesn't support partial indexes (WHERE clause), so the `is_current` index includes all rows
 
-2. **Batch Inserts:** Current implementation uses single-record inserts for simplicity. Could be optimized with batch inserts for large datasets
+2. **Batch Inserts:** Current implementation uses single-record inserts for simplicity. Could optimize with batch inserts for large datasets
 
 3. **Reserved Keywords:** Column name `references` must be quoted in SQL due to being a DuckDB reserved keyword
-
-4. **In-Memory Mode:** DuckDB supports in-memory mode (`:memory:`), but not used in tests to avoid serialization issues
 
 ## File Structure
 
@@ -178,22 +146,24 @@ python3 -m pytest tests/test_storage.py -v
 advisory_pipeline/storage/
 ├── __init__.py          # Clean public exports
 ├── database.py          # Schema and connection management (217 lines)
-├── loader.py            # Source observation loading (198 lines)
-└── scd2_manager.py      # SCD Type 2 state management (271 lines)
+└── loader.py            # Source observation loading (198 lines)
 ```
+
+**Removed Components:**
+- ~~scd2_manager.py~~ - Replaced by dbt snapshots in Phase 4
 
 ## Dependencies
 
 - `duckdb>=0.9.0`: Database engine
-- Standard library: `json`, `datetime`, `hashlib`, `typing`, `dataclasses`
+- Standard library: `json`, `datetime`, `hashlib`, `typing`
 
 ## Design Philosophy
 
 **Simplicity over Complexity:**
 - Clear separation of concerns
-- Explicit over implicit
+- Python for ingestion, dbt for transformation
+- Standard patterns over custom solutions
 - No unnecessary abstractions
-- Idiomatic Python
 
 **Production Quality:**
 - Comprehensive docstrings
@@ -212,18 +182,17 @@ advisory_pipeline/storage/
 Phase 3 provides the storage foundation. Future phases will:
 
 1. **Phase 4 (dbt):** Build transformation layer on these raw tables
-2. **Phase 5 (Decisioning):** Generate AdvisoryState objects to persist
-3. **Integration:** Connect ingestion → storage → decisioning → output
+2. **dbt Snapshots:** Populate advisory_state_history with temporal tracking
+3. **Marts:** Generate enriched advisory outputs for consumption
 
 ## Contact Points for Future Development
 
 **If you need to:**
 - Add new source types → Update Database (add raw table), Loader (add load method)
-- Change state fields → Update AdvisoryState dataclass, Database schema
-- Add state change rules → Update has_state_changed() logic
-- Query historical states → Use get_state_at_time() or get_history()
+- Query raw data → Use Database.connect() and standard SQL
+- Track state changes → Use dbt snapshots in Phase 4
 
 **Critical Interfaces:**
 - `SourceObservation` (from Phase 2)
-- `AdvisoryState` (for Phase 5)
-- Raw table schemas (for Phase 4 dbt)
+- Raw table schemas (for Phase 4 dbt sources)
+- advisory_state_history schema (for dbt snapshots)

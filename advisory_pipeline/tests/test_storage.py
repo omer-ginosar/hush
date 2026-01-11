@@ -4,16 +4,17 @@ Lightweight tests for storage layer.
 These tests validate core functionality without heavy mocking:
 - Database schema initialization
 - Source observation loading
-- SCD2 state transitions
-- Point-in-time queries
+- Loader idempotency
+
+Note: State history tracking is handled by dbt snapshots (Phase 4).
 """
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from storage import Database, SourceLoader, SCD2Manager, AdvisoryState
+from storage import Database, SourceLoader
 from ingestion.base_adapter import SourceObservation
 
 
@@ -132,192 +133,75 @@ def test_loader_idempotency(temp_db):
     assert result[0][0] == "obs_002"
 
 
-def test_scd2_first_state(temp_db):
-    """Test creating first state for an advisory."""
-    scd2 = SCD2Manager(temp_db)
-
-    state = AdvisoryState(
-        advisory_id="pkg:CVE-2024-0001",
-        cve_id="CVE-2024-0001",
-        package_name="pkg",
-        state="under_investigation",
-        state_type="non_final",
-        fixed_version=None,
-        confidence="low",
-        explanation="New CVE under analysis",
-        reason_code="NEW_CVE",
-        evidence={"source_count": 1},
-        decision_rule="R5:under_investigation",
-        contributing_sources=["echo_data"],
-        dissenting_sources=[],
-        staleness_score=0.0
-    )
-
+def test_loader_all_sources(temp_db):
+    """Test loading observations from all sources."""
+    loader = SourceLoader(temp_db)
     run_id = "run_test_003"
-    changed = scd2.apply_state(state, run_id)
 
-    assert changed is True
+    echo_obs = [SourceObservation(
+        observation_id="echo_001",
+        source_id="echo_data",
+        cve_id="CVE-2024-0001",
+        package_name="pkg1",
+        observed_at=datetime.utcnow(),
+        raw_payload={}
+    )]
 
-    # Verify current state
-    current = scd2.get_current_state("pkg:CVE-2024-0001")
-    assert current is not None
-    assert current["state"] == "under_investigation"
-    assert current["is_current"] is True
-
-
-def test_scd2_state_transition(temp_db):
-    """Test state change creates new history record."""
-    scd2 = SCD2Manager(temp_db)
-
-    # First state
-    state1 = AdvisoryState(
-        advisory_id="pkg:CVE-2024-0002",
+    csv_obs = [SourceObservation(
+        observation_id="csv_001",
+        source_id="echo_csv",
         cve_id="CVE-2024-0002",
-        package_name="pkg",
-        state="under_investigation",
-        state_type="non_final",
-        fixed_version=None,
-        confidence="low",
-        explanation="New CVE",
-        reason_code="NEW_CVE",
-        evidence={},
-        decision_rule="R5",
-        contributing_sources=["echo_data"],
-        dissenting_sources=[],
-        staleness_score=0.0
-    )
+        package_name="pkg2",
+        observed_at=datetime.utcnow(),
+        raw_payload={}
+    )]
 
-    scd2.apply_state(state1, "run_001")
-
-    # Second state (changed)
-    state2 = AdvisoryState(
-        advisory_id="pkg:CVE-2024-0002",
-        cve_id="CVE-2024-0002",
-        package_name="pkg",
-        state="fixed",
-        state_type="final",
-        fixed_version="1.2.3",
-        confidence="high",
-        explanation="Fixed in version 1.2.3",
-        reason_code="UPSTREAM_FIX",
-        evidence={"fixed_version": "1.2.3"},
-        decision_rule="R2",
-        contributing_sources=["echo_data", "osv"],
-        dissenting_sources=[],
-        staleness_score=0.0
-    )
-
-    changed = scd2.apply_state(state2, "run_002")
-
-    assert changed is True
-
-    # Verify history
-    history = scd2.get_history("pkg:CVE-2024-0002")
-    assert len(history) == 2
-
-    # First record should be closed
-    assert history[0]["is_current"] is False
-    assert history[0]["effective_to"] is not None
-
-    # Second record should be current
-    assert history[1]["is_current"] is True
-    assert history[1]["effective_to"] is None
-    assert history[1]["state"] == "fixed"
-
-
-def test_scd2_no_change_skip(temp_db):
-    """Test that identical state doesn't create new record."""
-    scd2 = SCD2Manager(temp_db)
-
-    state = AdvisoryState(
-        advisory_id="pkg:CVE-2024-0003",
+    nvd_obs = [SourceObservation(
+        observation_id="nvd_001",
+        source_id="nvd",
         cve_id="CVE-2024-0003",
-        package_name="pkg",
-        state="fixed",
-        state_type="final",
-        fixed_version="1.0.0",
-        confidence="high",
-        explanation="Fixed",
-        reason_code="UPSTREAM_FIX",
-        evidence={},
-        decision_rule="R2",
-        contributing_sources=["osv"],
-        dissenting_sources=[],
-        staleness_score=0.0
-    )
+        package_name=None,
+        observed_at=datetime.utcnow(),
+        raw_payload={}
+    )]
 
-    # First apply
-    changed1 = scd2.apply_state(state, "run_001")
-    assert changed1 is True
-
-    # Second apply (same state)
-    changed2 = scd2.apply_state(state, "run_002")
-    assert changed2 is False
-
-    # Should still have only one record
-    history = scd2.get_history("pkg:CVE-2024-0003")
-    assert len(history) == 1
-
-
-def test_scd2_point_in_time_query(temp_db):
-    """Test querying historical state at specific time."""
-    scd2 = SCD2Manager(temp_db)
-
-    now = datetime.utcnow()
-
-    # State 1
-    state1 = AdvisoryState(
-        advisory_id="pkg:CVE-2024-0004",
+    osv_obs = [SourceObservation(
+        observation_id="osv_001",
+        source_id="osv",
         cve_id="CVE-2024-0004",
-        package_name="pkg",
-        state="under_investigation",
-        state_type="non_final",
-        fixed_version=None,
-        confidence="low",
-        explanation="New",
-        reason_code="NEW_CVE",
-        evidence={},
-        decision_rule="R5",
-        contributing_sources=["echo_data"],
-        dissenting_sources=[],
-        staleness_score=0.0
-    )
+        package_name="pkg4",
+        observed_at=datetime.utcnow(),
+        raw_payload={}
+    )]
 
-    scd2.apply_state(state1, "run_001")
+    # Load all sources
+    counts = loader.load_all(echo_obs, csv_obs, nvd_obs, osv_obs, run_id)
 
-    # Wait a bit (simulate time passing)
-    import time
-    time.sleep(0.1)
+    # Verify counts
+    assert counts["echo_advisories"] == 1
+    assert counts["echo_csv"] == 1
+    assert counts["nvd"] == 1
+    assert counts["osv"] == 1
 
-    middle_time = datetime.utcnow()
+    # Verify data in each table
+    conn = temp_db.connect()
 
-    time.sleep(0.1)
+    echo_result = conn.execute(
+        "SELECT COUNT(*) FROM raw_echo_advisories WHERE run_id = ?", [run_id]
+    ).fetchone()[0]
+    assert echo_result == 1
 
-    # State 2
-    state2 = AdvisoryState(
-        advisory_id="pkg:CVE-2024-0004",
-        cve_id="CVE-2024-0004",
-        package_name="pkg",
-        state="fixed",
-        state_type="final",
-        fixed_version="2.0.0",
-        confidence="high",
-        explanation="Fixed",
-        reason_code="UPSTREAM_FIX",
-        evidence={},
-        decision_rule="R2",
-        contributing_sources=["osv"],
-        dissenting_sources=[],
-        staleness_score=0.0
-    )
+    csv_result = conn.execute(
+        "SELECT COUNT(*) FROM raw_echo_csv WHERE run_id = ?", [run_id]
+    ).fetchone()[0]
+    assert csv_result == 1
 
-    scd2.apply_state(state2, "run_002")
+    nvd_result = conn.execute(
+        "SELECT COUNT(*) FROM raw_nvd_observations WHERE run_id = ?", [run_id]
+    ).fetchone()[0]
+    assert nvd_result == 1
 
-    # Query at middle time should return state1
-    historical = scd2.get_state_at_time("pkg:CVE-2024-0004", middle_time)
-    assert historical is not None
-    assert historical["state"] == "under_investigation"
-
-    # Query at current time should return state2
-    current = scd2.get_current_state("pkg:CVE-2024-0004")
-    assert current["state"] == "fixed"
+    osv_result = conn.execute(
+        "SELECT COUNT(*) FROM raw_osv_observations WHERE run_id = ?", [run_id]
+    ).fetchone()[0]
+    assert osv_result == 1

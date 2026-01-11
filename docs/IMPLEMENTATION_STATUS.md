@@ -108,16 +108,15 @@ advisory_pipeline/
 **Deliverables**:
 - ✓ Database management (`database.py`) - Schema initialization and connection lifecycle
 - ✓ Source loader (`loader.py`) - Load observations into raw landing tables
-- ✓ SCD2 state manager (`scd2_manager.py`) - Temporal state history tracking
 - ✓ Clean module exports (`storage/__init__.py`)
-- ✓ Comprehensive tests (`tests/test_storage.py`) - 8 tests, all passing
+- ✓ Comprehensive tests (`tests/test_storage.py`) - 5 tests, all passing
 
 **Key Design Decisions**:
-1. **DuckDB Schema**: Raw landing tables + SCD Type 2 history table
+1. **DuckDB Schema**: Raw landing tables + SCD Type 2 history table (for dbt)
 2. **Idempotent Loads**: DELETE + INSERT pattern keyed by run_id
-3. **SCD Type 2 Pattern**: effective_from/effective_to timestamps with is_current flag
-4. **Change Detection**: Compare state, fixed_version, confidence, reason_code
-5. **Point-in-Time Queries**: Support historical state reconstruction
+3. **dbt-Native SCD2**: State history managed by dbt snapshots, not Python
+4. **Separation of Concerns**: Python for ingestion, dbt for transformation
+5. **Standard Patterns**: Follows dbt best practices over custom solutions
 6. **Reserved Keywords**: Quoted "references" column name for DuckDB compatibility
 
 **Test Results**:
@@ -126,10 +125,7 @@ advisory_pipeline/
 ✓ Run ID generation
 ✓ Echo advisories loading
 ✓ Loader idempotency
-✓ SCD2 first state creation
-✓ SCD2 state transitions
-✓ SCD2 skip unchanged states
-✓ Point-in-time queries
+✓ Multi-source batch loading
 ```
 
 **Tables Created**:
@@ -137,14 +133,13 @@ advisory_pipeline/
 - `raw_echo_csv`: Internal analyst overrides
 - `raw_nvd_observations`: NVD CVE data
 - `raw_osv_observations`: OSV vulnerability data
-- `advisory_state_history`: SCD Type 2 state tracking
+- `advisory_state_history`: SCD Type 2 state tracking (populated by dbt snapshots)
 - `pipeline_runs`: Pipeline execution metadata
 
 **Interface Contract**:
 - Input: `SourceObservation` objects from adapters
-- Output: Raw tables in DuckDB + SCD2 history table
-- SCD2 operations via `AdvisoryState` dataclass
-- Point-in-time query support via `get_state_at_time()`
+- Output: Raw tables in DuckDB for dbt consumption
+- State tracking: Delegated to dbt snapshots in Phase 4
 
 **Known Limitations**:
 - No partial indexes (DuckDB doesn't support WHERE clauses in indexes)

@@ -148,7 +148,8 @@ class Database:
         """)
 
         # Advisory state history (SCD Type 2)
-        # This table is both written by Python (SCD2Manager) and read/used by dbt
+        # This table is populated by dbt snapshots in Phase 4, not Python
+        # Schema matches dbt snapshot requirements for temporal tracking
         conn.execute("""
             CREATE TABLE IF NOT EXISTS advisory_state_history (
                 history_id VARCHAR PRIMARY KEY,
