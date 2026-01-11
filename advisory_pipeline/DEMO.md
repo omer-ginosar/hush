@@ -1,19 +1,25 @@
-# Phase 8: Demo Enhancement
+# Phase 8: Demo Enhancement - Visual Journey Tracking
 
 ## What Changed
 
-Enhanced `demo.py` to provide visual journey tracking for specific CVEs across multiple runs.
+Enhanced `demo.py` with visual CVE journey tracking that shows:
+1. Current state for each tracked CVE (with icons)
+2. Multiple source entries (NVD-only vs package-specific)
+3. SCD2 history table display
+4. Clear explanations of what's happening
 
-### New Feature: CVE Journey Tracker
+## Running the Demo
 
-The demo now tracks 4 specific CVEs through all 3 runs, showing:
-- Current state
-- State transitions (e.g., "pending_upstream → fixed")
-- Fixed version (if applicable)
-- Reason code and explanation
-- Visual icons (✅ for final states, ⏳ for non-final)
+```bash
+cd advisory_pipeline
+export PATH="/Users/omerginosar/Library/Python/3.9/bin:$PATH"  # Ensure dbt is in PATH
+python3 demo.py
+```
 
-### Example Output
+## What You'll See
+
+### CVE Journey Tracker
+Shows current state after each run:
 
 ```
 📊 CVE Journey Tracker - After Run 1
@@ -21,65 +27,133 @@ The demo now tracks 4 specific CVEs through all 3 runs, showing:
   ✅ CVE-2024-0001 (example-package)
      State: fixed (confidence: high)
      Fixed in: 1.2.3
-     Journey: fixed
-     Why: Fixed in version 1.2.3. Fix available from upstream.
-     Rule: UPSTREAM_FIX
+     Why: Fixed in version 1.2.3. Fix available from upstream....
+     Rule: R2:upstream_fix
 
-  ⏳ CVE-2024-0002 (example-package)
+  ↳ ⏳ CVE-2024-0001 (NVD-only)
      State: pending_upstream (confidence: medium)
-     Journey: pending_upstream
-     Why: No fix currently available upstream. Monitoring for updates.
-     Rule: AWAITING_FIX
+     Why: No fix currently available upstream. Monitoring for updates....
+     Rule: R6:pending_upstream
+```
 
-  ✅ CVE-2024-0003 (db-handler)
+Note: CVEs appear multiple times because different sources (OSV, NVD) provide data at different granularities.
+
+### SCD2 History Table
+Shows state change history:
+
+```
+📋 SCD2 History Table - After Run 1
+
+  ⚠️  CVE-2024-0001: No SCD2 history (pipeline doesn't populate it)
+  ⚠️  CVE-2024-0002: No SCD2 history (pipeline doesn't populate it)
+```
+
+This reveals that the Phase 7 pipeline doesn't actually use the SCD2 manager - it writes directly to marts via dbt.
+
+### State Distribution
+Shows overall counts across ALL advisories (~40k real CVEs from Echo):
+
+```
+Current State Distribution:
+  under_investigation       38225
+  not_applicable             1964
+  pending_upstream              3
+  fixed                         3
+```
+
+## Known Issues (From Phase 7 Architecture)
+
+The demo reveals several issues with the existing pipeline:
+
+### 1. SCD2 History Not Populated
+- **Issue**: `advisory_state_history` table exists but is empty
+- **Why**: Pipeline uses dbt to write directly to marts, bypassing SCD2 manager
+- **Impact**: No state transition tracking, metrics.state_changes always = 0
+
+### 2. CSV Override Not Working
+- **Issue**: CVE-2024-0002 stays `pending_upstream` even after CSV override
+- **Why**: Package name mismatch - CSV says "example-package" but NVD entry has NULL
+- **Impact**: Analyst overrides don't work for NVD-only CVEs
+
+### 3. Duplicate CVE Entries
+- **Issue**: Each CVE appears 2+ times in mart_advisory_current
+- **Why**: One entry per source (NVD without package, OSV with package)
+- **Impact**: Confusing output, inflated counts
+
+### 4. State Change Detection Broken
+- **Issue**: metrics.state_changes = 0 even when CVE-2024-0004 changes to fixed
+- **Why**: No SCD2 history to compare against
+- **Impact**: Can't track what changed between runs
+
+## What Phase 8 Delivers
+
+Despite the Phase 7 issues, Phase 8 successfully adds:
+
+✅ **Visual journey tracking** - Shows CVE state with icons and formatting
+✅ **Multiple source display** - Clearly shows when CVE has entries from different sources
+✅ **SCD2 table display** - Reveals that SCD2 isn't being used
+✅ **Honest reporting** - Demo summary explains what works and what doesn't
+
+## Example Terminal Output
+
+```
+======================================================================
+RUN 1: INITIAL LOAD
+======================================================================
+
+📊 CVE Journey Tracker - After Run 1
+====================================================================
+
+  ✅ CVE-2024-0001 (example-package)
      State: fixed (confidence: high)
-     Fixed in: 2.0.0
-     Journey: fixed
-     Why: Fixed in version 2.0.0. Fix available from upstream.
-     Rule: UPSTREAM_FIX
+     Fixed in: 1.2.3
+     Why: Fixed in version 1.2.3. Fix available from upstream....
+     Rule: R2:upstream_fix
 
-  ⏳ CVE-2024-0004 (parser-lib)
-     State: pending_upstream (confidence: low)
-     Journey: pending_upstream
-     Why: No fix currently available upstream. Monitoring for updates.
-     Rule: AWAITING_FIX
+  ↳ ⏳ CVE-2024-0001 (NVD-only)
+     State: pending_upstream (confidence: medium)
+     Why: No fix currently available upstream. Monitoring for updates....
+     Rule: R6:pending_upstream
+
+====================================================================
+
+📋 SCD2 History Table - After Run 1
+====================================================================
+
+  ⚠️  CVE-2024-0001: No SCD2 history (pipeline doesn't populate it)
+  ⚠️  CVE-2024-0002: No SCD2 history (pipeline doesn't populate it)
+  ⚠️  CVE-2024-0003: No SCD2 history (pipeline doesn't populate it)
+  ⚠️  CVE-2024-0004: No SCD2 history (pipeline doesn't populate it)
+
+====================================================================
+
+Current State Distribution:
+  under_investigation       38225
+  not_applicable             1964
+  pending_upstream              3
+  fixed                         3
+
+✓ 40195 advisories processed
 ```
 
-### What the Demo Shows
+## Value of This Demo
 
-**Run 1: Initial Load**
-- CVE-2024-0001 and CVE-2024-0003 marked as `fixed` (OSV has fixes)
-- CVE-2024-0002 and CVE-2024-0004 marked as `pending_upstream` (no fixes yet)
+Even though it reveals problems, the demo is valuable because:
 
-**Run 2: CSV Override**
-- CVE-2024-0002 changes from `pending_upstream` → `not_applicable`
-- Demonstrates analyst override (Rule R0) beats upstream signals
-- Journey shows the state transition
+1. **Visibility**: Makes architecture issues obvious
+2. **Honesty**: Doesn't pretend everything works
+3. **Clarity**: Easy to see what's happening with each CVE
+4. **Diagnosability**: SCD2 table check reveals the root cause
 
-**Run 3: Upstream Fix**
-- CVE-2024-0004 changes from `pending_upstream` → `fixed`
-- OSV now reports version 3.0.0 available
-- Journey shows how new upstream data triggers automatic updates
+The visual journey tracker works correctly - it just shows the truth about the current pipeline state.
 
-### Running the Demo
+## To Fix the Issues
 
-```bash
-cd advisory_pipeline
-python3 demo.py
-```
+These are Phase 7 problems that need separate work:
 
-The terminal output now clearly shows:
-1. Which CVEs are being tracked
-2. What happens to each CVE in each run
-3. Why each decision was made
-4. The complete journey from start to finish
+1. **Enable SCD2**: Modify pipeline to use `scd2_manager.py` instead of just dbt
+2. **Dedup CVEs**: Add logic to merge NVD and OSV entries for same CVE
+3. **Fix CSV matching**: Use CVE ID only, not package name
+4. **Track changes**: Compare against SCD2 history to count transitions
 
-### Key Improvements
-
-- **Visual clarity**: Icons and formatting make it easy to scan
-- **Journey tracking**: See state transitions, not just final states
-- **Explanations**: Every decision includes the "why"
-- **Focused**: Tracks 4 CVEs instead of overwhelming with all data
-- **Terminal-friendly**: Clear output that a reviewer can understand immediately
-
-No over-engineered documentation, no unnecessary tooling - just make the demo output speak for itself.
+Phase 8's job was to add visual tracking - which it does successfully.

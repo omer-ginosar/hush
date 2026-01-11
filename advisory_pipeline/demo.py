@@ -302,8 +302,8 @@ def show_cve_journey(db: Database, cve_ids: list, run_number: int):
     print("  " + "=" * 68)
 
     for cve_id in cve_ids:
-        # Get current state
-        result = conn.execute("""
+        # Get ALL entries for this CVE (may have multiple due to different packages/sources)
+        results = conn.execute("""
             SELECT
                 cve_id,
                 package_name,
@@ -311,41 +311,84 @@ def show_cve_journey(db: Database, cve_ids: list, run_number: int):
                 fixed_version,
                 reason_code,
                 explanation,
-                confidence
+                confidence,
+                decision_rule
             FROM main_marts.mart_advisory_current
             WHERE cve_id = ?
-        """, [cve_id]).fetchone()
+            ORDER BY CASE WHEN package_name IS NOT NULL THEN 0 ELSE 1 END, package_name
+        """, [cve_id]).fetchall()
 
-        if not result:
+        if not results:
             print(f"\n  ❌ {cve_id}: Not found")
             continue
 
-        cve, pkg, state, version, reason, explanation, confidence = result
+        # Show primary entry (with package if available)
+        for idx, result in enumerate(results):
+            cve, pkg, state, version, reason, explanation, confidence, rule = result
 
-        # Get state history to show transition
+            # Determine icon
+            icon = "✅" if state in ["fixed", "not_applicable"] else "⏳"
+
+            pkg_display = pkg if pkg else "NVD-only"
+            prefix = "  " if idx == 0 else "     ↳"
+
+            print(f"\n  {prefix} {icon} {cve_id} ({pkg_display})")
+            print(f"       State: {state} (confidence: {confidence})")
+            if version:
+                print(f"       Fixed in: {version}")
+            print(f"       Why: {explanation[:72]}...")
+            print(f"       Rule: {rule}")
+
+    print("  " + "=" * 68)
+
+
+def show_scd2_table(db: Database, cve_ids: list, run_number: int):
+    """Display SCD2 history table for tracked CVEs."""
+    conn = db.connect()
+
+    print(f"\n  📋 SCD2 History Table - After Run {run_number}")
+    print("  " + "=" * 68)
+
+    for cve_id in cve_ids:
         history = conn.execute("""
-            SELECT state, effective_from
+            SELECT
+                cve_id,
+                package_name,
+                state,
+                effective_from,
+                effective_to,
+                is_current,
+                run_id
             FROM advisory_state_history
             WHERE cve_id = ?
             ORDER BY effective_from
         """, [cve_id]).fetchall()
 
-        # Build state transition string
-        if len(history) > 1:
-            transition = " → ".join([h[0] for h in history])
-        else:
-            transition = history[0][0] if history else state
+        if not history:
+            # Check if CVE exists in mart (SCD2 might not be populated)
+            exists = conn.execute("""
+                SELECT COUNT(*) FROM main_marts.mart_advisory_current
+                WHERE cve_id = ?
+            """, [cve_id]).fetchone()[0]
 
-        # Determine icon
-        icon = "✅" if state in ["fixed", "not_applicable"] else "⏳"
+            if exists > 0:
+                print(f"\n  ⚠️  {cve_id}: No SCD2 history (pipeline doesn't populate it)")
+            else:
+                print(f"\n  ❌ {cve_id}: Not found")
+            continue
 
-        print(f"\n  {icon} {cve_id} ({pkg})")
-        print(f"     State: {state} (confidence: {confidence})")
-        if version:
-            print(f"     Fixed in: {version}")
-        print(f"     Journey: {transition}")
-        print(f"     Why: {explanation[:80]}...")
-        print(f"     Rule: {reason}")
+        print(f"\n  {cve_id}:")
+        print(f"     {'Package':<18} {'State':<18} {'From':<20} {'To':<20} {'Cur'} {'Run ID'}")
+        print("     " + "-" * 100)
+
+        for row in history:
+            cve, pkg, state, from_dt, to_dt, is_current, run_id = row
+            pkg_display = (pkg if pkg else "NVD")[:16]
+            from_str = str(from_dt)[:19] if from_dt else "N/A"
+            to_str = str(to_dt)[:19] if to_dt else "NULL"
+            current_mark = "✓" if is_current else ""
+
+            print(f"     {pkg_display:<18} {state:<18} {from_str:<20} {to_str:<20} {current_mark:<3} {run_id}")
 
     print("  " + "=" * 68)
 
@@ -383,6 +426,7 @@ def run_demo():
 
     db = Database()
     show_cve_journey(db, tracked_cves, 1)
+    show_scd2_table(db, tracked_cves, 1)
     show_state_distribution(db)
     db.close()
 
@@ -402,6 +446,7 @@ def run_demo():
 
     db = Database()
     show_cve_journey(db, tracked_cves, 2)
+    show_scd2_table(db, tracked_cves, 2)
     show_state_distribution(db)
     db.close()
 
@@ -421,6 +466,7 @@ def run_demo():
 
     db = Database()
     show_cve_journey(db, tracked_cves, 3)
+    show_scd2_table(db, tracked_cves, 3)
     show_state_distribution(db)
     db.close()
 
@@ -430,16 +476,23 @@ def run_demo():
     print("\n" + "=" * 70)
     print("DEMO COMPLETE - CVE LIFECYCLE SUMMARY")
     print("=" * 70)
-    print("\nFinal States:")
-    print("  ✅ CVE-2024-0001: fixed (had upstream fix from start)")
-    print("  ✅ CVE-2024-0002: not_applicable (analyst override in Run 2)")
-    print("  ✅ CVE-2024-0003: fixed (had upstream fix from start)")
-    print("  ✅ CVE-2024-0004: fixed (upstream fix detected in Run 3)")
-    print("\nKey Demonstrations:")
-    print("  • Rule priority: CSV override (R0) beats upstream fix (R2)")
-    print("  • State transitions: Tracked with full SCD Type 2 history")
-    print("  • Explainability: Every decision has reason code + explanation")
-    print("  • Continuous monitoring: New upstream data triggers updates")
+    print(f"\nTotal advisories processed: {metrics3.advisories_total}")
+    print(f"(Includes ~40k real CVEs from Echo data.json + 4 mock CVEs)")
+    print("\nMock CVE Results:")
+    print("  ✅ CVE-2024-0001: fixed (OSV has fix)")
+    print("  ⚠️  CVE-2024-0002: pending_upstream (CSV override not working - see notes)")
+    print("  ✅ CVE-2024-0003: fixed (OSV has fix)")
+    print("  ✅ CVE-2024-0004: fixed (fix added in Run 3)")
+    print("\nWhat This Demo Shows:")
+    print("  • Visual CVE journey tracking across runs")
+    print("  • Multiple source entries for same CVE (NVD + OSV)")
+    print("  • Rule-based decision making with explanations")
+    print("  • State distribution across large dataset")
+    print("\nKnown Issues (Phase 7 architecture):")
+    print("  ⚠️  SCD2 history table not populated by pipeline")
+    print("  ⚠️  State changes = 0 (no history tracking)")
+    print("  ⚠️  CSV override not working (package name mismatch)")
+    print("  ⚠️  Duplicate CVE entries (one per source)")
     print("\nOutput files: output/advisory_current.json, output/run_report_*.md")
     print("=" * 70 + "\n")
 
