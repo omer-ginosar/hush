@@ -201,11 +201,119 @@ class PendingUpstreamRule(Rule):
 
 
 def get_default_rules() -> List[Rule]:
-    """Get the default rule chain in priority order."""
+    """
+    Get the default rule chain in priority order.
+
+    Rules are evaluated in order (lowest priority number first).
+    First rule that matches determines the final state.
+
+    To add a new rule:
+    1. Create a class extending Rule (see EXTENDING.md)
+    2. Add instance here with appropriate priority
+    3. Add tests in tests/test_decisioning_rules.py
+
+    Example:
+        # Add after UpstreamFixRule():
+        # DistroNotAffectedRule(),  # Priority 3
+        # DistroWontFixRule(),       # Priority 4
+    """
     return [
-        CsvOverrideRule(),
-        NvdRejectedRule(),
-        UpstreamFixRule(),
-        UnderInvestigationRule(),
-        PendingUpstreamRule(),
+        CsvOverrideRule(),        # R0 (priority 0): Internal override - highest
+        NvdRejectedRule(),        # R1 (priority 1): NVD rejected
+        UpstreamFixRule(),        # R2 (priority 2): Fix available
+        # ADD NEW RULES HERE (priority 3-4 for distro-specific rules)
+        # Example: DistroNotAffectedRule(),
+        UnderInvestigationRule(), # R5 (priority 5): No signals yet
+        PendingUpstreamRule(),    # R6 (priority 6): Default fallback - always matches
     ]
+
+
+# ==============================================================================
+# RULE TEMPLATE - Copy and modify to add new rules
+# ==============================================================================
+#
+# class MyNewRule(Rule):
+#     """RX: Brief description of when this rule applies."""
+#
+#     def __init__(self):
+#         super().__init__("RX", X, "MY_REASON_CODE")
+#
+#     def evaluate(self, advisory_data: Dict[str, Any]) -> Optional[Decision]:
+#         """
+#         Evaluate if this rule applies.
+#
+#         Returns Decision if matched, None otherwise.
+#         """
+#         # 1. Extract relevant fields
+#         my_field = advisory_data.get('my_field')
+#
+#         # 2. Check if rule applies
+#         if not my_field:
+#             return None
+#
+#         # 3. Return decision
+#         return Decision(
+#             state='my_state',  # fixed | not_applicable | pending_upstream | etc.
+#             state_type='final',  # final | non_final
+#             fixed_version=advisory_data.get('fixed_version'),
+#             confidence='high',  # high | medium | low
+#             reason_code=self.reason_code,
+#             evidence={
+#                 'my_field': my_field,
+#                 'context': advisory_data.get('other_field')
+#             },
+#             explanation=f"Explanation based on {my_field}",
+#             contributing_sources=self._extract_sources(advisory_data),
+#             dissenting_sources=[]
+#         )
+#
+# Then add to get_default_rules() above with appropriate priority.
+# See EXTENDING.md for full guide with examples.
+# ==============================================================================
+
+
+# ==============================================================================
+# EXAMPLE: Distribution Not Affected Rule (R3)
+# Uncomment and modify to add support for distribution-specific data
+# ==============================================================================
+#
+# class DistroNotAffectedRule(Rule):
+#     """R3: Distribution marks CVE as not affected in their package."""
+#
+#     def __init__(self):
+#         super().__init__("R3", 3, "DISTRO_NOT_AFFECTED")
+#
+#     def evaluate(self, advisory_data: Dict[str, Any]) -> Optional[Decision]:
+#         # Check if distro data indicates not affected
+#         distro_status = advisory_data.get('distro_status')
+#
+#         if distro_status == 'not_affected':
+#             distro = advisory_data.get('distro', 'unknown distribution')
+#             notes = advisory_data.get('distro_notes', 'Not specified')
+#
+#             return Decision(
+#                 state='not_applicable',
+#                 state_type='final',
+#                 fixed_version=None,
+#                 confidence='high',
+#                 reason_code=self.reason_code,
+#                 evidence={
+#                     'distro_status': distro_status,
+#                     'distro_notes': notes,
+#                     'distro': distro
+#                 },
+#                 explanation=f"Not affected in {distro}. Reason: {notes}.",
+#                 contributing_sources=self._extract_sources(advisory_data),
+#                 dissenting_sources=[]
+#             )
+#
+#         return None
+#
+# To enable:
+# 1. Uncomment this class
+# 2. Add DistroNotAffectedRule() to get_default_rules() after UpstreamFixRule()
+# 3. Add 'distro_status', 'distro_notes', 'distro' fields to dbt enrichment
+# 4. Add explanation template to config.yaml:
+#    DISTRO_NOT_AFFECTED: "Not affected in {distro}. Reason: {distro_notes}."
+# 5. Create ingestion adapter for distro data (e.g., UbuntuAdapter, DebianAdapter)
+# ==============================================================================
