@@ -3356,6 +3356,189 @@ In production, this would use:
 
 ---
 
+## Phase 11: Bug Fixes
+
+### Overview
+
+Phase 8's demo enhancement revealed 4 critical architectural issues from Phase 7 that need to be addressed. These bugs prevent the pipeline from properly tracking state transitions and applying analyst overrides.
+
+### Bug 1: SCD2 History Table Not Populated
+
+**Issue**: The `advisory_state_history` table exists but remains empty after pipeline runs.
+
+**Root Cause**: The Phase 7 pipeline uses dbt to write directly to `mart_advisory_current`, completely bypassing the `storage/scd2_manager.py` module. The SCD2 manager is never invoked.
+
+**Impact**:
+- No historical state tracking
+- Cannot perform point-in-time queries
+- Metrics show `state_changes = 0` even when CVEs change state
+- No audit trail for compliance
+
+**Evidence**:
+```sql
+SELECT COUNT(*) FROM advisory_state_history;
+-- Returns: 0 (even after 3 demo runs)
+
+SELECT COUNT(*) FROM main_marts.mart_advisory_current;
+-- Returns: 40195 (populated correctly)
+```
+
+**Fix Required**:
+1. Modify `run_pipeline.py` to read from `mart_advisory_current` after dbt runs
+2. For each advisory, call `scd2_manager.track_advisory_state()`
+3. This populates `advisory_state_history` with proper SCD2 semantics
+4. Update observability layer to read from SCD2 table for state change metrics
+
+**Files to Modify**:
+- `run_pipeline.py` (add SCD2 tracking after dbt run)
+- `observability/metrics_collector.py` (read from SCD2 table)
+
+---
+
+### Bug 2: State Change Detection Broken
+
+**Issue**: Metrics show `state_changes = 0` even when CVEs visibly change state between runs.
+
+**Root Cause**: The `metrics_collector.py` tries to compare current state against `advisory_state_history`, but that table is empty (see Bug 1). Without historical data, no changes can be detected.
+
+**Impact**:
+- Cannot measure pipeline effectiveness
+- No visibility into which CVEs are being resolved
+- Run reports show misleading "0 state changes" message
+
+**Evidence**:
+```
+Run 3 output:
+✓ 40195 advisories processed
+✓ 0 state change(s) detected  # <- Wrong! CVE-2024-0004 changed to fixed
+
+Demo shows CVE-2024-0004 changed:
+Run 2: under_investigation
+Run 3: fixed (from upstream patch)
+```
+
+**Fix Required**:
+1. Fix Bug 1 first (populate SCD2 table)
+2. Update `metrics_collector.collect_state_changes()` to handle empty history gracefully
+3. Add test coverage for state transition detection
+
+**Files to Modify**:
+- `observability/metrics_collector.py`
+- `tests/test_metrics_collector.py` (new file)
+
+---
+
+### Bug 3: CSV Override Not Working for NVD-Only CVEs
+
+**Issue**: CVE-2024-0002 remains `pending_upstream` even after being added to `analysts_overrides.csv` with `not_applicable` status.
+
+**Root Cause**: Package name mismatch in join logic. The dbt model `int_final_signals.sql` joins CSV overrides on both `cve_id` AND `package_name`:
+
+```sql
+LEFT JOIN {{ ref('stg_echo_csv_overrides') }} csv_override
+  ON combined.cve_id = csv_override.cve_id
+  AND combined.package_name = csv_override.package_name  # <- Problem!
+```
+
+When NVD provides a CVE without package information, `package_name = NULL`. The CSV override specifies a package name, so the join fails and the override is ignored.
+
+**Impact**:
+- Analyst overrides don't work for ~38k NVD-only CVEs
+- Teams cannot triage CVEs that lack package context
+- Defeats the purpose of human-in-the-loop workflow
+
+**Evidence**:
+```csv
+# analysts_overrides.csv
+CVE-2024-0002,example-package,not_applicable,Out of scope for our deployment
+
+# NVD data
+{"cve_id": "CVE-2024-0002", "package_name": null, ...}
+
+# Result: No match, override ignored
+```
+
+**Fix Required**:
+1. Change join to match on `cve_id` only (package_name is optional context)
+2. Add test case for NVD-only CVE with CSV override
+3. Update demo data to show this scenario working
+
+**Files to Modify**:
+- `dbt_project/models/intermediate/int_final_signals.sql`
+- `tests/test_csv_overrides.py` (new file)
+
+---
+
+### Bug 4: Duplicate CVE Entries in mart_advisory_current
+
+**Issue**: Each CVE appears 2+ times in `mart_advisory_current` with different states, one entry per source.
+
+**Root Cause**: The pipeline creates separate observations for:
+- NVD entry (package_name = NULL, state based on NVD signals)
+- OSV entry (package_name = "example-package", state based on OSV signals)
+
+Both entries persist to the final mart without deduplication or merging logic.
+
+**Impact**:
+- Confusing output (which state is "correct"?)
+- Inflated advisory counts (40k unique CVEs appear as 60k+ entries)
+- Difficult to answer "is CVE-X fixed?" (depends which row you query)
+- Demo journey tracker shows multiple entries per CVE
+
+**Evidence**:
+```sql
+SELECT cve_id, package_name, state
+FROM main_marts.mart_advisory_current
+WHERE cve_id = 'CVE-2024-0001';
+
+# Returns:
+# CVE-2024-0001, example-package, fixed
+# CVE-2024-0001, NULL, pending_upstream
+```
+
+**Fix Required**:
+
+**Option 1: Deduplication Logic** (Recommended)
+- Merge entries for same CVE into single advisory
+- Combine signals from all sources
+- Use highest-priority state as final state
+- Store contributing sources in array field
+
+**Option 2: Granularity by Design**
+- Keep separate entries (package-level granularity)
+- Add view `mart_advisory_current_by_cve` that deduplicates
+- Update demo to use deduplicated view
+- Document that base mart is package-level, not CVE-level
+
+**Files to Modify**:
+- `dbt_project/models/marts/mart_advisory_current.sql` (add dedup logic)
+- OR `dbt_project/models/marts/mart_advisory_current_by_cve.sql` (new view)
+- `demo.py` (query deduplicated view)
+- `observability/report_generator.py` (use correct counts)
+
+---
+
+### Implementation Priority
+
+1. **Bug 1 (SCD2)** - Blocks Bug 2, foundational for audit trail
+2. **Bug 2 (State Changes)** - Depends on Bug 1, needed for observability
+3. **Bug 3 (CSV Override)** - Independent, breaks analyst workflow
+4. **Bug 4 (Duplicates)** - Independent, affects data quality
+
+### Acceptance Criteria
+
+After Phase 11 is complete:
+
+- [ ] `SELECT COUNT(*) FROM advisory_state_history` returns > 0 after demo run
+- [ ] Demo shows `state_changes > 0` when CVE-2024-0004 transitions to fixed
+- [ ] CVE-2024-0002 shows `not_applicable` state after CSV override in Run 2
+- [ ] Each CVE appears exactly once in `mart_advisory_current` (or has clear dedup view)
+- [ ] Demo journey tracker shows single entry per CVE
+- [ ] All dbt tests pass
+- [ ] New unit tests added for each bug fix
+
+---
+
 ## Build Order Summary
 
 1. **Phase 1**: Project setup (requirements, config)
@@ -3368,6 +3551,7 @@ In production, this would use:
 8. **Phase 8**: Demo script
 9. **Phase 9**: Tests
 10. **Phase 10**: README
+11. **Phase 11**: Bug fixes (SCD2, state changes, CSV overrides, deduplication)
 
 ## Validation Criteria
 
