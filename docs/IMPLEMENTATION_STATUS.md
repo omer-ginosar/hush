@@ -150,52 +150,102 @@ advisory_pipeline/
 
 ---
 
-### ⏳ Phase 4: dbt Project (PENDING)
+### ✅ Phase 4: dbt Project (COMPLETE)
 
-**Scope**: SQL transformations for data enrichment
+**Completed**: 2026-01-11
+**Branch**: `feature/phase4-dbt-project`
 
-**Components**:
-- dbt project configuration
-- Staging models (validation, cleaning)
-- Intermediate models (enrichment, aggregation)
-- Mart models (decisions, current state, history)
-- Macros for reusable logic
-- dbt tests for data quality
+**Deliverables**:
+- ✓ dbt project configuration with DuckDB profile
+- ✓ Staging models (validation, cleaning)
+- ✓ Intermediate models (enrichment, aggregation)
+- ✓ Mart models (decisions, current state, history)
+- ✓ Macros for reusable logic
+- ✓ dbt tests for data quality
 
 **Interface Contract**:
 - Input: Raw tables from storage layer
 - Output: Analytical marts (decisions, current state, history)
 
+**Test Results**: All dbt models compiled and tested successfully
+
+**Next Phase**: Phase 5 - Decisioning Layer
+
 ---
 
-### ⏳ Phase 5: Decisioning (PENDING)
+### ✅ Phase 5: Decisioning Layer (COMPLETE)
 
-**Scope**: Rule engine for advisory state determination
+**Completed**: 2026-01-11
+**Branch**: `feature/phase5-decisioning-layer`
 
-**Components**:
-- Rule definitions (`rules.py`)
-- Rule engine (`rule_engine.py`)
-- State machine (`state_machine.py`)
-- Explanation generator (`explainer.py`)
+**Deliverables**:
+- ✓ Rule definitions (`rules.py`) - Abstract Rule class + 5 concrete rules
+- ✓ Rule engine (`rule_engine.py`) - First-match-wins evaluation
+- ✓ State machine (`state_machine.py`) - Transition validation
+- ✓ Explanation generator (`explainer.py`) - Template-based explanations
+- ✓ Comprehensive test suite (45 tests, all passing)
+- ✓ Documentation (`decisioning/README.md`)
+
+**Key Design Decisions**:
+1. Priority-ordered rule chain (first-match-wins)
+2. Immutable Decision objects
+3. Template-based explanations
+4. State machine validation
+
+**Test Results**:
+```
+✓ test_decisioning_rules.py: 12/12 passed
+✓ test_rule_engine.py: 7/7 passed
+✓ test_state_machine.py: 13/13 passed
+✓ test_explainer.py: 13/13 passed
+Total: 45 tests, 45 passed
+```
 
 **Interface Contract**:
 - Input: Enriched advisory data from dbt
 - Output: State decisions with explanations and evidence
 
+**Next Phase**: Phase 6 - Observability Layer
+
 ---
 
-### ⏳ Phase 6: Observability (PENDING)
+### ✅ Phase 6: Observability Layer (COMPLETE)
 
-**Scope**: Metrics, monitoring, and quality checks
+**Completed**: 2026-01-11
+**Branch**: `feature/phase6-observability-layer`
 
-**Components**:
-- Metrics collection (`metrics.py`)
-- Data quality checks (`quality_checks.py`)
-- Reporting (`reporter.py`)
+**Deliverables**:
+- ✓ RunMetrics (`metrics.py`) - Comprehensive metrics tracking
+- ✓ QualityChecker (`quality_checks.py`) - 6 SQL-based quality checks
+- ✓ RunReporter (`reporter.py`) - Markdown report generation
+- ✓ Test suite (8 tests, all passing)
+- ✓ Documentation (`observability/README.md`)
+
+**Key Design Decisions**:
+1. SQL-based quality checks for performance
+2. Markdown reports for portability
+3. Single RunMetrics object per run
+4. Minimal dependencies (only tabulate)
+
+**Test Results**:
+```
+✓ test_observability.py: 8/8 passed
+Total: 8 tests, 8 passed
+```
+
+**Quality Checks Implemented**:
+- no_null_states
+- explanation_completeness
+- fixed_has_version
+- cve_format
+- stalled_cves
+- no_orphan_packages (placeholder)
 
 **Interface Contract**:
 - Input: Pipeline execution data
-- Output: Metrics, quality reports, alerts
+- Output: Metrics JSON, quality check results, Markdown reports
+
+**Next Phase**: Phase 7 - Orchestration
 
 ---
 
@@ -323,4 +373,4 @@ class SourceObservation:
 ---
 
 **Last Updated**: 2026-01-11
-**Updated By**: Phase 3 Implementation Agent
+**Updated By**: Phase 6 Implementation Agent
