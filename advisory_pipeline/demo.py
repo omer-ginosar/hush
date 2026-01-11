@@ -290,38 +290,122 @@ def show_state_distribution(db: Database):
         print(f"    {state:25} {count:3}")
 
 
-def show_cve_history(db: Database, cve_id: str):
-    """Display state history for a specific CVE."""
+def show_cve_journey(db: Database, cve_ids: list, run_number: int):
+    """
+    Display the journey of specific CVEs showing state changes.
+
+    This creates a visual table showing what happened to each tracked CVE.
+    """
     conn = db.connect()
-    results = conn.execute("""
-        SELECT
-            state,
-            reason_code,
-            decided_at,
-            run_id
-        FROM main_marts.mart_advisory_current
-        WHERE cve_id = ?
-    """, [cve_id]).fetchall()
 
-    if not results:
-        print(f"\n  No history found for {cve_id}")
-        return
+    print(f"\n  📊 CVE Journey Tracker - After Run {run_number}")
+    print("  " + "=" * 68)
 
-    print(f"\n  Current State for {cve_id}:")
-    for state, reason_code, decided_at, run_id in results:
-        timestamp = decided_at.isoformat()[:19] if decided_at else "unknown"
-        print(f"    {state:20} | {reason_code:20} | {run_id}")
+    for cve_id in cve_ids:
+        # Get ALL entries for this CVE (may have multiple due to different packages/sources)
+        results = conn.execute("""
+            SELECT
+                cve_id,
+                package_name,
+                state,
+                fixed_version,
+                reason_code,
+                explanation,
+                confidence,
+                decision_rule
+            FROM main_marts.mart_advisory_current
+            WHERE cve_id = ?
+            ORDER BY CASE WHEN package_name IS NOT NULL THEN 0 ELSE 1 END, package_name
+        """, [cve_id]).fetchall()
+
+        if not results:
+            print(f"\n  ❌ {cve_id}: Not found")
+            continue
+
+        # Show primary entry (with package if available)
+        for idx, result in enumerate(results):
+            cve, pkg, state, version, reason, explanation, confidence, rule = result
+
+            # Determine icon
+            icon = "✅" if state in ["fixed", "not_applicable"] else "⏳"
+
+            pkg_display = pkg if pkg else "NVD-only"
+            prefix = "  " if idx == 0 else "     ↳"
+
+            print(f"\n  {prefix} {icon} {cve_id} ({pkg_display})")
+            print(f"       State: {state} (confidence: {confidence})")
+            if version:
+                print(f"       Fixed in: {version}")
+            print(f"       Why: {explanation[:72]}...")
+            print(f"       Rule: {rule}")
+
+    print("  " + "=" * 68)
+
+
+def show_scd2_table(db: Database, cve_ids: list, run_number: int):
+    """Display SCD2 history table for tracked CVEs."""
+    conn = db.connect()
+
+    print(f"\n  📋 SCD2 History Table - After Run {run_number}")
+    print("  " + "=" * 68)
+
+    for cve_id in cve_ids:
+        history = conn.execute("""
+            SELECT
+                cve_id,
+                package_name,
+                state,
+                effective_from,
+                effective_to,
+                is_current,
+                run_id
+            FROM advisory_state_history
+            WHERE cve_id = ?
+            ORDER BY effective_from
+        """, [cve_id]).fetchall()
+
+        if not history:
+            # Check if CVE exists in mart (SCD2 might not be populated)
+            exists = conn.execute("""
+                SELECT COUNT(*) FROM main_marts.mart_advisory_current
+                WHERE cve_id = ?
+            """, [cve_id]).fetchone()[0]
+
+            if exists > 0:
+                print(f"\n  ⚠️  {cve_id}: No SCD2 history (pipeline doesn't populate it)")
+            else:
+                print(f"\n  ❌ {cve_id}: Not found")
+            continue
+
+        print(f"\n  {cve_id}:")
+        print(f"     {'Package':<18} {'State':<18} {'From':<20} {'To':<20} {'Cur'} {'Run ID'}")
+        print("     " + "-" * 100)
+
+        for row in history:
+            cve, pkg, state, from_dt, to_dt, is_current, run_id = row
+            pkg_display = (pkg if pkg else "NVD")[:16]
+            from_str = str(from_dt)[:19] if from_dt else "N/A"
+            to_str = str(to_dt)[:19] if to_dt else "NULL"
+            current_mark = "✓" if is_current else ""
+
+            print(f"     {pkg_display:<18} {state:<18} {from_str:<20} {to_str:<20} {current_mark:<3} {run_id}")
+
+    print("  " + "=" * 68)
 
 
 def run_demo():
     """Execute full demo scenario."""
+    # CVEs to track throughout the demo
+    tracked_cves = ["CVE-2024-0001", "CVE-2024-0002", "CVE-2024-0003", "CVE-2024-0004"]
+
     print("\n" + "=" * 70)
     print("CVE ADVISORY PIPELINE - DEMONSTRATION")
     print("=" * 70)
-    print("\nThis demo shows:")
-    print("  1. Initial pipeline run with base data")
-    print("  2. CSV override changing state (not_applicable)")
-    print("  3. Upstream fix detection triggering state change")
+    print("\nThis demo tracks 4 CVEs through 3 pipeline runs:")
+    print("  • CVE-2024-0001: Has fix in OSV from start")
+    print("  • CVE-2024-0002: Will be overridden by analyst in Run 2")
+    print("  • CVE-2024-0003: Has fix in OSV from start")
+    print("  • CVE-2024-0004: No fix initially, gets fix in Run 3")
     print("=" * 70)
 
     # Setup
@@ -332,72 +416,84 @@ def run_demo():
     print("\n" + "=" * 70)
     print("RUN 1: INITIAL LOAD")
     print("=" * 70)
-    print("Scenario: Fresh database, no overrides")
+    print("Input: Echo data.json + NVD + OSV (CVE-0001 and CVE-0003 have fixes)")
 
     create_csv_override(include_override=False)
 
     pipeline = AdvisoryPipeline()
     metrics1 = pipeline.run()
-    pipeline.db.close()  # Close DB connection after run
+    pipeline.db.close()
 
     db = Database()
+    show_cve_journey(db, tracked_cves, 1)
+    show_scd2_table(db, tracked_cves, 1)
     show_state_distribution(db)
-    show_cve_history(db, "CVE-2024-0001")
     db.close()
 
-    print(f"\nResult: {metrics1.advisories_total} advisories processed")
+    print(f"\n  ✓ {metrics1.advisories_total} advisories processed")
 
     # === RUN 2: CSV Override ===
     print("\n" + "=" * 70)
     print("RUN 2: CSV OVERRIDE")
     print("=" * 70)
-    print("Scenario: Security team marks CVE-2024-0002 as not_applicable")
+    print("Input: Analyst adds CSV override for CVE-2024-0002 → not_applicable")
 
     create_csv_override(include_override=True)
 
     pipeline2 = AdvisoryPipeline()
     metrics2 = pipeline2.run()
-    pipeline2.db.close()  # Close DB connection after run
+    pipeline2.db.close()
 
     db = Database()
+    show_cve_journey(db, tracked_cves, 2)
+    show_scd2_table(db, tracked_cves, 2)
     show_state_distribution(db)
-    show_cve_history(db, "CVE-2024-0002")
     db.close()
 
-    print(f"\nResult: {metrics2.state_changes} state change(s)")
+    print(f"\n  ✓ {metrics2.state_changes} state change(s) detected")
 
     # === RUN 3: Upstream Fix ===
     print("\n" + "=" * 70)
     print("RUN 3: UPSTREAM FIX DETECTED")
     print("=" * 70)
-    print("Scenario: OSV now shows fix for CVE-2024-0004")
+    print("Input: OSV now reports fix for CVE-2024-0004 (version 3.0.0)")
 
     update_osv_with_new_fix()
 
     pipeline3 = AdvisoryPipeline()
     metrics3 = pipeline3.run()
-    pipeline3.db.close()  # Close DB connection after run
+    pipeline3.db.close()
 
     db = Database()
+    show_cve_journey(db, tracked_cves, 3)
+    show_scd2_table(db, tracked_cves, 3)
     show_state_distribution(db)
-    show_cve_history(db, "CVE-2024-0004")
     db.close()
 
-    print(f"\nResult: {metrics3.state_changes} state change(s)")
+    print(f"\n  ✓ {metrics3.state_changes} state change(s) detected")
 
     # Summary
     print("\n" + "=" * 70)
-    print("DEMO COMPLETE")
+    print("DEMO COMPLETE - CVE LIFECYCLE SUMMARY")
     print("=" * 70)
-    print(f"\nTotal Runs: 3")
-    print(f"Final Advisory Count: {metrics3.advisories_total}")
-    print(f"\nOutput files generated:")
-    print(f"  - output/advisory_current.json")
-    print(f"  - output/run_report_*.md (3 reports)")
-    print("\nTo explore:")
-    print(f"  - Check advisory_pipeline.duckdb for full state history")
-    print(f"  - Review output/advisory_current.json for current state")
-    print(f"  - Read output/run_report_*.md for detailed metrics")
+    print(f"\nTotal advisories processed: {metrics3.advisories_total}")
+    print(f"(Includes ~40k real CVEs from Echo data.json + 4 mock CVEs)")
+    print("\nMock CVE Results:")
+    print("  ✅ CVE-2024-0001: fixed (OSV has fix)")
+    print("  ⚠️  CVE-2024-0002: pending_upstream (CSV override not working - see notes)")
+    print("  ✅ CVE-2024-0003: fixed (OSV has fix)")
+    print("  ✅ CVE-2024-0004: fixed (fix added in Run 3)")
+    print("\nWhat This Demo Shows:")
+    print("  • Visual CVE journey tracking across runs")
+    print("  • Multiple source entries for same CVE (NVD + OSV)")
+    print("  • Rule-based decision making with explanations")
+    print("  • State distribution across large dataset")
+    print("\nKnown Issues (Phase 7 architecture):")
+    print("  ⚠️  SCD2 history table not populated by pipeline")
+    print("  ⚠️  State changes = 0 (no history tracking)")
+    print("  ⚠️  CSV override not working (package name mismatch)")
+    print("  ⚠️  Duplicate CVE entries (one per source)")
+    print("\nOutput files: output/advisory_current.json, output/run_report_*.md")
     print("=" * 70 + "\n")
 
 
