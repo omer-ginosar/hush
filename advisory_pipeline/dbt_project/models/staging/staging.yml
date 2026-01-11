@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: stg_echo_advisories
+    description: "Cleaned and validated Echo advisory data from data.json"
+    columns:
+      - name: observation_id
+        description: "Unique observation identifier"
+        tests:
+          - unique
+          - not_null
+      - name: cve_id
+        description: "Validated CVE identifier"
+      - name: package_name
+        description: "Package name (non-null, non-empty)"
+        tests:
+          - not_null
+      - name: has_invalid_cve
+        description: "Flag for records with invalid CVE format"
+
+  - name: stg_echo_csv
+    description: "Cleaned Echo CSV override data"
+    columns:
+      - name: observation_id
+        description: "Unique observation identifier"
+        tests:
+          - unique
+          - not_null
+      - name: override_status
+        description: "Override status decision"
+      - name: override_reason
+        description: "Analyst-provided reason for override"
+
+  - name: stg_nvd_observations
+    description: "Cleaned NVD observation data"
+    columns:
+      - name: observation_id
+        description: "Unique observation identifier"
+        tests:
+          - unique
+          - not_null
+      - name: cve_id
+        description: "CVE identifier"
+        tests:
+          - not_null
+      - name: rejection_status
+        description: "NVD rejection status (none, rejected, disputed)"
+      - name: severity
+        description: "Derived severity from CVSS score"
+
+  - name: stg_osv_observations
+    description: "Cleaned OSV observation data"
+    columns:
+      - name: observation_id
+        description: "Unique observation identifier"
+        tests:
+          - unique
+          - not_null
+      - name: fix_available
+        description: "Whether upstream fix is available"
+      - name: fixed_version
+        description: "Version containing the fix"

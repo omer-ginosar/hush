@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: mart_advisory_decisions
+    description: "Advisory decisions with rule-based state determinations"
+    columns:
+      - name: advisory_id
+        description: "Unique advisory identifier (package:CVE)"
+        tests:
+          - unique
+          - not_null
+      - name: state
+        description: "Advisory state (fixed, not_applicable, pending_upstream, etc.)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['fixed', 'not_applicable', 'wont_fix', 'pending_upstream', 'under_investigation', 'unknown']
+      - name: state_type
+        description: "State type (final or non_final)"
+        tests:
+          - accepted_values:
+              values: ['final', 'non_final']
+      - name: decision_rule
+        description: "Rule that determined this state"
+        tests:
+          - not_null
+      - name: reason_code
+        description: "Reason code for explanation template"
+        tests:
+          - not_null
+      - name: confidence
+        description: "Confidence level (high, medium, low)"
+        tests:
+          - accepted_values:
+              values: ['high', 'medium', 'low']
+
+  - name: mart_advisory_current
+    description: "Current advisory states with human-readable explanations"
+    columns:
+      - name: advisory_id
+        description: "Unique advisory identifier"
+        tests:
+          - unique
+          - not_null
+      - name: explanation
+        description: "Human-readable explanation of the decision"
+        tests:
+          - not_null
+      - name: state
+        description: "Advisory state"
+        tests:
+          - not_null
