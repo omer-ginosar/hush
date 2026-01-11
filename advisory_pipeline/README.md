@@ -1,191 +1,416 @@
-# CVE Advisory Pipeline - Phase 1: Project Setup
+# Advisory Pipeline - Technical Reference
 
-## Overview
+Production-quality CVE advisory enrichment pipeline implementation.
 
-This is the foundational setup for a production-like CVE advisory enrichment pipeline that:
-- Ingests real advisory data (data.json) + simulated upstream sources (NVD, OSV)
-- Applies a deterministic rule engine with full explainability
-- Maintains SCD Type 2 state history in DuckDB
-- Uses dbt for all data transformations
-- Produces customer-facing outputs with explanations
-
-**Current Phase**: Phase 1 - Project Setup
-**Status**: ✓ Complete
-
-## Project Structure
-
-```
-advisory_pipeline/
-├── README.md                    # This file
-├── requirements.txt             # Python dependencies
-├── config.yaml                  # Pipeline configuration
-├── run_pipeline.py              # Main orchestrator (Phase 2+)
-├── demo.py                      # Multi-run demonstration (Phase 2+)
-│
-├── ingestion/                   # Source adapters (Phase 2)
-│   ├── __init__.py
-│   ├── base_adapter.py
-│   ├── echo_data_adapter.py
-│   ├── echo_csv_adapter.py
-│   ├── nvd_adapter.py
-│   ├── osv_adapter.py
-│   └── mock_responses/
-│       ├── nvd_responses.json
-│       └── osv_responses.json
-│
-├── dbt_project/                 # dbt transformations (Phase 4)
-│   ├── dbt_project.yml
-│   ├── profiles.yml
-│   ├── seeds/
-│   ├── models/
-│   │   ├── staging/
-│   │   ├── intermediate/
-│   │   └── marts/
-│   ├── macros/
-│   └── tests/
-│
-├── decisioning/                 # Rule engine (Phase 5)
-│   ├── __init__.py
-│   ├── rule_engine.py
-│   ├── rules.py
-│   ├── state_machine.py
-│   └── explainer.py
-│
-├── storage/                     # Database management (Phase 3)
-│   ├── __init__.py
-│   ├── database.py
-│   ├── scd2_manager.py
-│   └── loader.py
-│
-├── observability/               # Metrics and quality (Phase 6)
-│   ├── __init__.py
-│   ├── metrics.py
-│   ├── quality_checks.py
-│   └── reporter.py
-│
-├── output/                      # Generated outputs
-│   └── .gitkeep
-│
-└── tests/                       # Unit tests
-    ├── test_rules.py
-    ├── test_scd2.py
-    └── test_conflict_resolution.py
-```
-
-## Setup Instructions
-
-### Prerequisites
-
-- Python 3.11 or higher
-- Access to project root directory containing `data.json` and `advisory_not_applicable.csv`
-
-### Installation
-
-1. Create and activate a virtual environment:
+## Quick Reference
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Run single pipeline execution
+python3 run_pipeline.py
+
+# Run multi-stage demonstration
+python3 demo.py
+
+# Run tests
+pytest tests/ -v
 ```
 
-2. Install dependencies:
+**Outputs:**
+- `output/advisory_current.json` - Current advisory states
+- `output/run_report_*.md` - Execution metrics
+- `advisory_pipeline.duckdb` - State history database
 
+## Architecture
+
+**Data Flow:**
+```
+Sources (Echo/NVD/OSV) → Adapters → Raw Tables → dbt → Marts → Rules → Decisions → SCD2 History
+```
+
+**Pipeline Stages:**
+1. **Ingestion** - Fetch and normalize multi-source data
+2. **Loading** - Write to raw DuckDB tables
+3. **Transformation** - dbt staging → intermediate → marts
+4. **Decisioning** - Apply priority-ordered rules
+5. **Quality Checks** - Validate outputs
+6. **Reporting** - Generate metrics and reports
+
+## Components
+
+### Ingestion ([ingestion/](ingestion/))
+
+Adapters for each data source implementing `BaseAdapter` interface.
+
+**Available Adapters:**
+- `EchoDataAdapter` - Parse data.json (40k+ advisories)
+- `EchoCsvAdapter` - Parse CSV overrides (analyst decisions)
+- `NvdAdapter` - NVD vulnerability data (mock)
+- `OsvAdapter` - OSV vulnerability data (mock)
+
+**Output:** Normalized `SourceObservation` objects
+
+**See:** [ingestion/README.md](ingestion/README.md)
+
+### Storage ([storage/](storage/))
+
+Database schema management and data loading.
+
+**Components:**
+- `Database` - DuckDB schema initialization
+- `SourceLoader` - Load observations into raw tables
+
+**Tables:**
+- `raw_echo_advisories` - Base corpus
+- `raw_echo_csv` - Analyst overrides
+- `raw_nvd_observations` - NVD data
+- `raw_osv_observations` - OSV data
+- `advisory_state_history` - SCD2 tracking
+- `pipeline_runs` - Execution metadata
+
+### dbt Project ([dbt_project/](dbt_project/))
+
+SQL-based data transformations.
+
+**Model Layers:**
+1. **Staging** (`models/staging/`) - Validate and clean
+2. **Intermediate** (`models/intermediate/`) - Enrich and aggregate
+3. **Marts** (`models/marts/`) - Business outputs
+
+**Key Models:**
+- `stg_*` - Per-source validation
+- `int_source_observations` - Unified source view
+- `int_enriched_advisories` - Aggregated signals
+- `mart_advisory_decisions` - Rule evaluations
+- `mart_advisory_current` - Current states
+
+**See:** [dbt_project/README.md](dbt_project/README.md)
+
+### Decisioning ([decisioning/](decisioning/))
+
+Rule-based decision engine with explainability.
+
+**Components:**
+- `Rule` - Abstract rule base class
+- `RuleEngine` - First-match-wins evaluation
+- `AdvisoryStateMachine` - Transition validation
+- `ExplanationGenerator` - Template-based explanations
+
+**Rules (Priority Order):**
+- **R0** CSV Override → `not_applicable`
+- **R1** NVD Rejected → `not_applicable`
+- **R2** Upstream Fix → `fixed`
+- **R5** Under Investigation → `under_investigation`
+- **R6** Pending Upstream → `pending_upstream`
+
+**See:** [decisioning/README.md](decisioning/README.md)
+
+### Observability ([observability/](observability/))
+
+Metrics collection and quality validation.
+
+**Components:**
+- `RunMetrics` - Execution metrics tracking
+- `QualityChecker` - SQL-based data quality checks
+- `RunReporter` - Markdown report generation
+
+**Quality Checks:**
+- `no_null_states` - All advisories have states
+- `explanation_completeness` - All have explanations
+- `fixed_has_version` - Fixed state has version
+- `cve_format` - Valid CVE ID format
+- `stalled_cves` - Detect stale states
+
+**See:** [observability/README.md](observability/README.md)
+
+## Configuration
+
+All pipeline behavior configured via [config.yaml](config.yaml):
+
+```yaml
+database:
+  path: "advisory_pipeline.duckdb"
+
+sources:
+  echo_data:
+    type: "json"
+    cache_path: "../data.json"  # Adjust path as needed
+
+  echo_csv:
+    path: "../advisory_not_applicable.csv"
+
+  nvd:
+    type: "mock"
+    mock_file: "ingestion/mock_responses/nvd_responses.json"
+
+rules:
+  - id: "R0"
+    name: "csv_override"
+    priority: 0
+    reason_code: "CSV_OVERRIDE"
+
+states:
+  final:
+    - "fixed"
+    - "not_applicable"
+  non_final:
+    - "pending_upstream"
+    - "under_investigation"
+```
+
+## Testing
+
+Test suite in [tests/](tests/) with 67 passing tests.
+
+**Organization:**
+- **Unit Tests** - Individual component logic
+- **Integration Tests** - Component interactions
+- **Fixtures** - Shared test data in `conftest.py`
+
+**Run Tests:**
 ```bash
-cd advisory_pipeline
-pip install -r requirements.txt
+# All tests
+pytest tests/ -v
+
+# Specific module
+pytest tests/test_rule_engine.py -v
+
+# With coverage
+pytest tests/ --cov=advisory_pipeline --cov-report=html
+
+# Integration only
+pytest tests/test_integration.py tests/test_conflict_resolution.py -v
 ```
 
-### Configuration
+**See:** [tests/README.md](tests/README.md)
 
-The pipeline is configured via [config.yaml](config.yaml):
+## Data Models
 
-- **Database**: DuckDB location (defaults to `advisory_pipeline.duckdb`)
-- **Sources**: Data source configurations
-  - `echo_data`: Main advisory corpus (data.json)
-  - `echo_csv`: Internal analyst overrides (advisory_not_applicable.csv)
-  - `nvd`: Mock NVD API responses
-  - `osv`: Mock OSV API responses
-- **Rules**: Decision rule definitions with priority ordering
-- **States**: Valid state classifications (final vs non-final)
-- **Explanation Templates**: Human-readable explanation formats
+### SourceObservation
 
-## Phase 1 Deliverables
+Normalized observation from any source.
 
-✓ Complete project directory structure
-✓ Python package initialization
-✓ Dependencies specification (requirements.txt)
-✓ Pipeline configuration (config.yaml)
-✓ Updated .gitignore for pipeline artifacts
-✓ Project documentation (this README)
+```python
+@dataclass
+class SourceObservation:
+    observation_id: str
+    source_id: str                    # 'echo_data' | 'echo_csv' | 'nvd' | 'osv'
+    cve_id: Optional[str]
+    package_name: Optional[str]
+    observed_at: datetime
+    raw_payload: Dict[str, Any]
+    # Normalized signals
+    fix_available: Optional[bool]
+    fixed_version: Optional[str]
+    status: Optional[str]
+    rejection_status: Optional[str]
+    cvss_score: Optional[float]
+```
 
-## How This Fits Into the Prototype
+### Decision
 
-**Phase 1** establishes the foundation. Subsequent phases will:
+Rule engine output with explainability.
 
-- **Phase 2**: Implement ingestion adapters to load data from sources
-- **Phase 3**: Build storage layer with DuckDB and SCD Type 2 management
-- **Phase 4**: Create dbt models for data transformations
-- **Phase 5**: Implement rule engine for advisory state decisions
-- **Phase 6**: Add observability, metrics, and quality checks
-- **Phase 7**: Build orchestration and demo scripts
+```python
+@dataclass
+class Decision:
+    state: str                        # 'fixed' | 'not_applicable' | ...
+    state_type: str                   # 'final' | 'non_final'
+    confidence: str                   # 'high' | 'medium' | 'low'
+    fixed_version: Optional[str]
+    reason_code: str                  # 'CSV_OVERRIDE' | 'UPSTREAM_FIX' | ...
+    explanation: str                  # Human-readable
+    evidence: Dict[str, Any]          # Supporting data
+    contributing_sources: List[str]   # Sources that contributed
+    dissenting_sources: List[str]     # Sources that disagree
+```
 
-## Design Decisions
+## Extending the Pipeline
 
-### Why DuckDB over SQLite?
+### Add New Data Source
 
-DuckDB provides better dbt integration and more powerful SQL capabilities while maintaining the lightweight, embedded nature needed for this prototype.
+1. Implement `BaseAdapter` in `ingestion/new_source_adapter.py`
+2. Add table schema in `storage/database.py`
+3. Add loader method in `storage/loader.py`
+4. Create dbt staging model `dbt_project/models/staging/stg_new_source.sql`
+5. Update `int_source_observations.sql` to union new source
+6. Add tests
 
-### Why dbt?
+### Add New Decision Rule
 
-Separating transformation logic into dbt provides:
-- SQL-based transformations (declarative, testable)
-- Built-in testing and documentation
-- Clear lineage and dependency management
-- Industry-standard approach for data transformations
+1. Implement `Rule` subclass in `decisioning/rules.py`
+2. Add rule config to `config.yaml`
+3. Add explanation template to config
+4. Register in `RuleEngine._get_default_rules()`
+5. Add tests in `tests/test_decisioning_rules.py`
 
-### Configuration Approach
+### Add New Quality Check
 
-Externalized configuration allows:
-- Different environments (dev, test, prod)
-- Easy source switching (mock vs real APIs)
-- Rule modification without code changes
-- Template-based explanations for maintainability
+1. Add method to `QualityChecker` class
+2. Implement SQL-based validation
+3. Add to `run_all_checks()` method
+4. Add test in `tests/test_observability.py`
 
-### Minimal Scope
+**See:** [DEVELOPMENT.md](../DEVELOPMENT.md) for detailed extension guide
 
-Phase 1 intentionally includes only:
-- Directory structure
-- Configuration
-- Documentation
+## Pipeline Execution
 
-No implementation code to avoid scope creep. Clean interfaces for subsequent phases.
+### run_pipeline.py
+
+Main orchestrator - runs full pipeline end-to-end.
+
+**Execution Flow:**
+1. Initialize database schema
+2. Fetch from all sources
+3. Load to raw tables
+4. Run dbt transformations
+5. Export current state JSON
+6. Run quality checks
+7. Generate markdown report
+
+**Idempotency:** Safe to re-run (keyed by run_id)
+
+### demo.py
+
+Multi-run demonstration with visual CVE journey tracking.
+
+**Features:**
+- 3 progressive runs showing state changes
+- Visual CVE journey tracker (icons, formatting)
+- SCD2 history table display
+- State distribution metrics
+
+**See:** [DEMO.md](DEMO.md)
+
+## State Change Tracking (SCD2)
+
+Slowly Changing Dimension Type 2 pattern tracks full advisory history.
+
+**Schema:**
+```sql
+advisory_state_history (
+    history_id,
+    advisory_id,
+    state,
+    effective_from,
+    effective_to,      -- NULL for current
+    is_current,
+    -- metadata fields
+)
+```
+
+**Query current state:**
+```sql
+SELECT * FROM advisory_state_history WHERE is_current = TRUE
+```
+
+**Query point-in-time:**
+```sql
+SELECT * FROM advisory_state_history
+WHERE advisory_id = 'pkg:CVE-2024-0001'
+  AND effective_from <= '2024-01-15'
+  AND (effective_to IS NULL OR effective_to > '2024-01-15')
+```
 
 ## Known Limitations
 
-- Configuration references paths relative to project root (assumes specific directory structure)
-- No environment-specific config files yet (could add config.dev.yaml, config.prod.yaml)
-- Mock data file paths hardcoded (could be made more flexible)
+1. **Mock NVD/OSV**: Static fixtures, not real APIs
+2. **Sequential Processing**: No parallelization
+3. **Full Refresh**: No incremental loads
+4. **Single Environment**: No dev/staging/prod configs
+5. **SCD2 Population**: Currently bypassed (dbt writes directly to marts)
 
-## Follow-Up Work
+**See:** [docs/IMPLEMENTATION_STATUS.md](../docs/IMPLEMENTATION_STATUS.md) for technical debt
 
-Next phases should:
-1. Implement base adapter interface and concrete adapters (Phase 2)
-2. Create database schema and SCD2 manager (Phase 3)
-3. Build dbt project with staging, intermediate, and mart models (Phase 4)
-4. Implement rule engine with explainability (Phase 5)
+## Dependencies
 
-## Interface Assumptions
+From [requirements.txt](requirements.txt):
 
-For subsequent phases:
+```
+dbt-duckdb>=1.7.0    # dbt with DuckDB adapter
+duckdb>=0.9.0        # Embedded analytical database
+pyyaml>=6.0          # Config parsing
+requests>=2.31.0     # HTTP client (future API use)
+jinja2>=3.1.0        # Template rendering
+pytest>=7.4.0        # Testing framework
+tabulate>=0.9.0      # Report formatting
+```
 
-**Inputs** (from project root):
-- `data.json`: Echo advisory corpus
-- `advisory_not_applicable.csv`: Analyst overrides
+## Project History
 
-**Outputs** (to `output/`):
-- `advisory_current.json`: Current state of all advisories
-- `advisory_history.json`: Full state change history
-- `run_report.json`: Pipeline execution metrics
+Phased development approach:
+- **Phase 1**: Project setup and configuration
+- **Phase 2**: Ingestion adapters
+- **Phase 3**: Storage layer
+- **Phase 4**: dbt transformations
+- **Phase 5**: Decisioning engine
+- **Phase 6**: Observability
+- **Phase 7**: Orchestration
+- **Phase 8**: Demo enhancements
+- **Phase 9**: Test suite
+- **Phase 10**: Documentation (this phase)
 
-**Shared State**:
-- `advisory_pipeline.duckdb`: Central database for all pipeline data
+**Full history:** [docs/IMPLEMENTATION_STATUS.md](../docs/IMPLEMENTATION_STATUS.md)
+
+## Interface Contracts
+
+**Ingestion → Storage:**
+```python
+List[SourceObservation] → loader.load_*() → DuckDB raw tables
+```
+
+**Storage → dbt:**
+```sql
+Raw tables → dbt models → Mart tables
+```
+
+**dbt → Decisioning:**
+```python
+mart_advisory_decisions → RuleEngine → Decision objects
+```
+
+**Observability:**
+```python
+Database + RunMetrics → QualityChecker + Reporter → JSON + Markdown
+```
+
+## Troubleshooting
+
+### Pipeline Fails on dbt
+
+```bash
+# Check dbt can find database
+cd dbt_project
+dbt debug
+
+# Manually run dbt
+dbt run --select stg_echo_advisories
+```
+
+### No Observations Loaded
+
+```bash
+# Check data files exist
+ls -lh ../data.json
+ls -lh ../advisory_not_applicable.csv
+
+# Test adapter directly
+python3 -c "from ingestion import EchoDataAdapter; ..."
+```
+
+### Quality Checks Fail
+
+```bash
+# Inspect failed data in DuckDB
+duckdb advisory_pipeline.duckdb
+SELECT * FROM mart_advisory_current WHERE state IS NULL;
+```
+
+### Empty SCD2 History
+
+Known issue - pipeline doesn't populate `advisory_state_history`. State changes tracked in dbt snapshots (future enhancement).
+
+---
+
+**For Users:** See [../README.md](../README.md) for quick start
+**For Developers:** See [../DEVELOPMENT.md](../DEVELOPMENT.md) for extension guide
+**For Status:** See [../docs/IMPLEMENTATION_STATUS.md](../docs/IMPLEMENTATION_STATUS.md)
