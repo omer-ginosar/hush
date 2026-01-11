@@ -1,0 +1,100 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw source observations loaded by Python adapters"
+    schema: main
+    tables:
+      - name: raw_echo_advisories
+        description: "Echo's base advisory corpus from data.json"
+        columns:
+          - name: observation_id
+            description: "Unique observation identifier"
+            tests:
+              - unique
+              - not_null
+          - name: cve_id
+            description: "CVE identifier (CVE-YYYY-NNNNN)"
+          - name: package_name
+            description: "Package name from Echo data"
+          - name: observed_at
+            description: "When this observation was recorded"
+          - name: run_id
+            description: "Pipeline run that created this observation"
+
+      - name: raw_echo_csv
+        description: "Internal analyst overrides from CSV"
+        columns:
+          - name: observation_id
+            description: "Unique observation identifier"
+            tests:
+              - unique
+              - not_null
+          - name: cve_id
+            description: "CVE identifier"
+          - name: package_name
+            description: "Package name"
+          - name: status
+            description: "Override status (not_applicable, wont_fix, etc.)"
+          - name: reason
+            description: "Human-readable override reason"
+
+      - name: raw_nvd_observations
+        description: "NVD CVE data"
+        columns:
+          - name: observation_id
+            description: "Unique observation identifier"
+            tests:
+              - unique
+              - not_null
+          - name: cve_id
+            description: "CVE identifier"
+          - name: rejection_status
+            description: "NVD rejection status (none, rejected, disputed)"
+          - name: cvss_score
+            description: "CVSS base score (0-10)"
+          - name: cvss_vector
+            description: "CVSS vector string"
+
+      - name: raw_osv_observations
+        description: "OSV vulnerability data"
+        columns:
+          - name: observation_id
+            description: "Unique observation identifier"
+            tests:
+              - unique
+              - not_null
+          - name: cve_id
+            description: "CVE identifier (may be null for OSV-only vulns)"
+          - name: package_name
+            description: "Package name from OSV"
+          - name: fix_available
+            description: "Whether a fix is available upstream"
+          - name: fixed_version
+            description: "Version that contains the fix"
+
+      - name: advisory_state_history
+        description: "SCD2 advisory state history"
+        columns:
+          - name: history_id
+            description: "Unique history record identifier"
+          - name: advisory_id
+            description: "Advisory identifier (package:CVE)"
+          - name: state
+            description: "Current state of the advisory"
+          - name: is_current
+            description: "Whether this is the current active record"
+          - name: effective_from
+            description: "Start of validity period"
+          - name: effective_to
+            description: "End of validity period (NULL if current)"
+
+      - name: pipeline_runs
+        description: "Pipeline execution metadata"
+        columns:
+          - name: run_id
+            description: "Unique run identifier"
+          - name: started_at
+            description: "When the run started"
+          - name: status
+            description: "Run status (running, completed, failed)"

@@ -1,0 +1,41 @@
+name: 'advisory_pipeline'
+version: '1.0.0'
+config-version: 2
+
+profile: 'advisory_pipeline'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Current pipeline run ID - passed from orchestrator
+  current_run_id: "{{ env_var('PIPELINE_RUN_ID', 'manual_run') }}"
+
+models:
+  advisory_pipeline:
+    # Staging models: lightweight views for basic cleaning
+    staging:
+      +materialized: view
+      +schema: staging
+
+    # Intermediate models: tables for complex joins and enrichment
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+
+    # Mart models: final output tables
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  advisory_pipeline:
+    +schema: seeds

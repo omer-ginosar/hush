@@ -1,0 +1,8 @@
+advisory_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Path relative to dbt_project directory
+      path: '../advisory_pipeline.duckdb'
+      threads: 4

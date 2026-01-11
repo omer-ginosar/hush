@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: int_source_observations
+    description: "Unified view of all source observations with common schema"
+    columns:
+      - name: source_id
+        description: "Source identifier (echo_data, echo_csv, nvd, osv)"
+      - name: source_priority
+        description: "Source priority for conflict resolution (lower = higher priority)"
+      - name: cve_id
+        description: "CVE identifier"
+      - name: package_name
+        description: "Package name"
+
+  - name: int_enriched_advisories
+    description: "Advisories enriched with aggregated signals from all sources"
+    columns:
+      - name: advisory_id
+        description: "Unique advisory identifier (package:CVE)"
+        tests:
+          - unique
+          - not_null
+      - name: cve_id
+        description: "CVE identifier"
+      - name: fix_available
+        description: "Whether upstream fix is available (resolved)"
+      - name: is_rejected
+        description: "Whether CVE was rejected by NVD"
+      - name: contributing_sources
+        description: "List of sources that contributed data"
+
+  - name: int_decision_inputs
+    description: "Decision inputs with derived confidence and signal flags"
+    columns:
+      - name: advisory_id
+        description: "Unique advisory identifier"
+        tests:
+          - unique
+          - not_null
+      - name: confidence
+        description: "Confidence level (high, medium, low)"
+      - name: has_signal
+        description: "Whether any substantive signal exists"
+      - name: source_count
+        description: "Number of contributing sources"
