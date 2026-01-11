@@ -100,19 +100,53 @@ advisory_pipeline/
 
 ---
 
-### ⏳ Phase 3: Storage Layer (PENDING)
+### ✅ Phase 3: Storage Layer (COMPLETE)
 
-**Scope**: Database setup and SCD Type 2 management
+**Completed**: 2026-01-11
+**Branch**: `feature/phase3-storage-layer`
 
-**Components**:
-- Database initialization (`database.py`)
-- SCD2 state manager (`scd2_manager.py`)
-- Source loader (`loader.py`)
+**Deliverables**:
+- ✓ Database management (`database.py`) - Schema initialization and connection lifecycle
+- ✓ Source loader (`loader.py`) - Load observations into raw landing tables
+- ✓ Clean module exports (`storage/__init__.py`)
+- ✓ Comprehensive tests (`tests/test_storage.py`) - 5 tests, all passing
+
+**Key Design Decisions**:
+1. **DuckDB Schema**: Raw landing tables + SCD Type 2 history table (for dbt)
+2. **Idempotent Loads**: DELETE + INSERT pattern keyed by run_id
+3. **dbt-Native SCD2**: State history managed by dbt snapshots, not Python
+4. **Separation of Concerns**: Python for ingestion, dbt for transformation
+5. **Standard Patterns**: Follows dbt best practices over custom solutions
+6. **Reserved Keywords**: Quoted "references" column name for DuckDB compatibility
+
+**Test Results**:
+```
+✓ Database initialization (schema creation)
+✓ Run ID generation
+✓ Echo advisories loading
+✓ Loader idempotency
+✓ Multi-source batch loading
+```
+
+**Tables Created**:
+- `raw_echo_advisories`: Base advisory corpus (from data.json)
+- `raw_echo_csv`: Internal analyst overrides
+- `raw_nvd_observations`: NVD CVE data
+- `raw_osv_observations`: OSV vulnerability data
+- `advisory_state_history`: SCD Type 2 state tracking (populated by dbt snapshots)
+- `pipeline_runs`: Pipeline execution metadata
 
 **Interface Contract**:
-- Input: Normalized observations from adapters
-- Output: Raw tables in DuckDB + SCD2 history table
-- Point-in-time query support
+- Input: `SourceObservation` objects from adapters
+- Output: Raw tables in DuckDB for dbt consumption
+- State tracking: Delegated to dbt snapshots in Phase 4
+
+**Known Limitations**:
+- No partial indexes (DuckDB doesn't support WHERE clauses in indexes)
+- Single-record inserts (could optimize with batch inserts)
+- Column `references` must be quoted (reserved keyword)
+
+**Next Phase**: Phase 4 - dbt Project (transformations and marts)
 
 ---
 
@@ -289,4 +323,4 @@ class SourceObservation:
 ---
 
 **Last Updated**: 2026-01-11
-**Updated By**: Phase 2 Implementation Agent
+**Updated By**: Phase 3 Implementation Agent
