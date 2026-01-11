@@ -56,7 +56,7 @@ osv_signals as (
 source_contributions as (
     select
         coalesce(package_name, 'UNKNOWN') || ':' || cve_id as advisory_id,
-        list(distinct source_id order by source_priority) as contributing_sources
+        list(distinct source_id) as contributing_sources
     from observations
     where cve_id is not null
     group by coalesce(package_name, 'UNKNOWN') || ':' || cve_id
