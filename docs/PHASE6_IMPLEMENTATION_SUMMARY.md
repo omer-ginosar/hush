@@ -125,6 +125,20 @@ Comprehensive test coverage (8 tests, all passing):
 - Faster installation and fewer compatibility issues
 - Focus on simplicity over features
 
+### 6. Python Quality Checks vs. dbt Tests
+
+**Chosen**: Python SQL-based checks (with dbt test integration planned for Phase 7)
+
+**Rationale**:
+- **Immediate**: Ships Phase 6 with working quality checks now
+- **Flexible**: Programmatic access to results for pipeline orchestration
+- **Integrates with reporting**: Results flow directly into Markdown reports
+- **Hybrid future**: Can integrate dbt tests in Phase 7 by parsing `target/run_results.json`
+
+**Trade-off**: Not using dbt's native testing initially, but architecture supports migration to hybrid approach where Python orchestrates both dbt tests and custom checks.
+
+**Recommended Phase 7 enhancement**: Add dbt tests to marts and have QualityChecker run `dbt test` and parse results alongside custom Python checks.
+
 ## Integration Points
 
 ### Inputs (from Pipeline Orchestrator)
@@ -205,17 +219,19 @@ All tests pass with 100% success rate.
 
 ## Known Limitations
 
-1. **No alerting**: Reports are written to files but not sent anywhere. In production, integrate with alerting systems (email, Slack, PagerDuty).
+1. **Python-based quality checks instead of dbt tests**: Current implementation uses Python SQL queries for data quality checks. While this works, a more maintainable approach would be to use dbt's native testing framework and have Python parse the results. This is documented as a Phase 7 enhancement.
 
-2. **No trend analysis**: Each report is standalone. Consider adding historical comparison in production.
+2. **No alerting**: Reports are written to files but not sent anywhere. In production, integrate with alerting systems (email, Slack, PagerDuty).
 
-3. **No orphan package check**: Requires a package registry that doesn't exist in the prototype.
+3. **No trend analysis**: Each report is standalone. Consider adding historical comparison in production.
 
-4. **Fixed thresholds**: Stalled CVE threshold (90 days, 10 CVEs) is hardcoded. Make configurable in production.
+4. **No orphan package check**: Requires a package registry that doesn't exist in the prototype.
 
-5. **No performance metrics**: Query timing and dbt model performance not tracked.
+5. **Fixed thresholds**: Stalled CVE threshold (90 days, 10 CVEs) is hardcoded. Make configurable in production.
 
-6. **No metrics export**: No integration with Prometheus, CloudWatch, or Datadog.
+6. **No performance metrics**: Query timing and dbt model performance not tracked.
+
+7. **No metrics export**: No integration with Prometheus, CloudWatch, or Datadog.
 
 ## Interface Contracts
 
@@ -303,13 +319,36 @@ Modify `RunReporter.generate_report()` to add sections or change formatting.
 
 The observability layer is ready for integration. Phase 7 should:
 
+### Immediate Integration
 1. Instantiate `RunMetrics` at pipeline start
 2. Record source health after ingestion
 3. Record transitions and rule firing during SCD2 updates
 4. Run quality checks after dbt execution
 5. Generate and save reports at pipeline end
 6. Store metrics JSON in `pipeline_runs` table
-7. Consider adding metrics export to monitoring systems
+
+### Phase 7 Enhancements
+7. **Add dbt tests** to `dbt_project/models/marts/marts.yml`:
+   ```yaml
+   models:
+     - name: mart_advisory_current
+       columns:
+         - name: state
+           tests: [not_null]
+         - name: explanation
+           tests: [not_null]
+       tests:
+         - dbt_utils.expression_is_true:
+             expression: "state != 'fixed' OR fixed_version IS NOT NULL"
+   ```
+
+8. **Refactor QualityChecker** to run `dbt test` and parse results:
+   - Run `dbt test` via subprocess
+   - Parse `target/run_results.json`
+   - Convert to `QualityCheckResult` objects
+   - Keep custom Python checks for non-dbt logic
+
+This hybrid approach leverages dbt's native capabilities while maintaining Python orchestration for unified reporting.
 
 ## Verification Commands
 

@@ -227,6 +227,29 @@ Modify `RunReporter.generate_report()` to add new sections or change formatting.
 
 For production deployment, consider:
 
+### High Priority (Phase 7)
+
+- **dbt test integration**: Current quality checks are Python-based SQL queries. For better maintainability, add dbt tests to `dbt_project/models/marts/marts.yml` and have `QualityChecker` parse `target/run_results.json` from `dbt test` runs. This provides:
+  - Native dbt data quality checks
+  - Integration with dbt docs and lineage
+  - Unified reporting through Python orchestration
+  - Example refactor:
+    ```python
+    def run_all_checks(self) -> List[QualityCheckResult]:
+        # Run dbt tests
+        subprocess.run(["dbt", "test"], cwd="dbt_project")
+
+        # Parse results from target/run_results.json
+        results = self._parse_dbt_test_results()
+
+        # Still run custom Python checks for non-dbt logic
+        results.extend(self._run_custom_checks())
+
+        return results
+    ```
+
+### Medium Priority
+
 - **Metrics export**: Send metrics to Prometheus, CloudWatch, or Datadog
 - **Alert routing**: Failed quality checks should trigger alerts
 - **Historical trends**: Track metrics over time to detect degradation
