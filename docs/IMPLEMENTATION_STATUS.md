@@ -100,6 +100,36 @@ advisory_pipeline/
 
 ---
 
+### ✅ Phase 2b: Live NVD/OSV Adapters (COMPLETE)
+
+**Completed**: 2026-01-12
+**Branch**: `feature/real-nvd-osv-adapters`
+
+**Deliverables**:
+- ✓ NVD adapter now fetches from the NVD 2.0 API with rate limiting, retries, and circuit breaking
+- ✓ OSV adapter now ingests the public data dump with local caching and optional ecosystem filters
+- ✓ Shared HTTP client utilities (rate limiter, retry/backoff, circuit breaker, in-run cache)
+- ✓ Config updates for API keys, cache paths, and mock toggles
+- ✓ Tests default to mock mode for NVD/OSV (offline-friendly)
+
+**Key Design Decisions**:
+1. **Minimal HTTP Client**: Shared adapter utilities for consistent retries and rate limiting
+2. **Time-Windowed NVD Fetch**: Defaults to recent changes to avoid full historical pulls
+3. **OSV Dump Cache**: Local zip cache with TTL to avoid repeated downloads
+4. **Mock Toggle**: Explicit `use_mock` flag for tests and demos
+
+**Assumptions**:
+- NVD API key available via `NVD_API_KEY`
+- OSV dump download acceptable for prototype scope
+
+**Known Limitations**:
+- No Redis cache; in-run cache and local file cache only
+- No persisted incremental checkpoints across runs
+
+**Next Phase**: Phase 3 - Storage Layer (database setup and SCD2 management)
+
+---
+
 ### ✅ Phase 3: Storage Layer (COMPLETE)
 
 **Completed**: 2026-01-11

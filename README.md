@@ -45,6 +45,11 @@ python3 run_pipeline.py
 python3 demo.py
 ```
 
+Optional: provide an NVD API key for higher rate limits:
+```bash
+export NVD_API_KEY="your-key"
+```
+
 ### Outputs
 
 - `output/advisory_current.json` - Current state of all advisories
@@ -174,9 +179,9 @@ Pipeline behavior is controlled via [advisory_pipeline/config.yaml](advisory_pip
 
 ## Known Limitations
 
-1. **Mock Data**: NVD and OSV use static fixtures (not real API calls)
+1. **OSV Dump Size**: Full data dump with local cache; use filters or max limits for scale
 2. **Single Environment**: No dev/staging/prod config separation
-3. **Full Refresh**: No incremental processing yet
+3. **Incremental Processing**: NVD uses time windows but no persisted checkpoints
 4. **Sequential Processing**: No parallelization of source fetching
 
 See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for technical debt tracking.
@@ -185,11 +190,11 @@ See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for technical
 
 This is a technical assessment prototype. For production deployment:
 
-1. Replace mock NVD/OSV adapters with real API clients
-2. Add authentication and rate limiting
-3. Implement incremental processing
-4. Add retry logic and circuit breakers
-5. Deploy to production scheduler (Airflow, etc.)
+1. Persist incremental checkpoints per source
+2. Expand OSV filtering strategy or use per-ecosystem dumps
+3. Add distributed orchestration (Airflow, etc.)
+4. Add centralized caching (Redis) for source responses
+5. Add service-level monitoring/alerting
 
 ## License
 

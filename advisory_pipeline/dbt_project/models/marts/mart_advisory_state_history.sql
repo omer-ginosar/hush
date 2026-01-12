@@ -1,3 +1,4 @@
+-- depends_on: {{ ref('advisory_state_snapshot') }}
 -- Advisory state history (SCD Type 2)
 -- Maps dbt snapshot output to advisory_state_history schema
 -- This provides the historical state tracking required for audit and analysis

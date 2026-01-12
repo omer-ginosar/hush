@@ -79,6 +79,7 @@ def test_echo_csv_adapter():
 def test_nvd_adapter():
     """Test NVD adapter can load and normalize mock responses."""
     config = {
+        "use_mock": True,
         "mock_file": "ingestion/mock_responses/nvd_responses.json"
     }
     adapter = NvdAdapter(config)
@@ -106,6 +107,7 @@ def test_nvd_adapter():
 def test_osv_adapter():
     """Test OSV adapter can load and normalize mock responses."""
     config = {
+        "use_mock": True,
         "mock_file": "ingestion/mock_responses/osv_responses.json"
     }
     adapter = OsvAdapter(config)

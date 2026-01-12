@@ -4,8 +4,8 @@ Ingestion layer for the CVE Advisory Pipeline.
 Provides adapters for fetching and normalizing data from multiple sources:
 - Echo data.json (base advisory corpus)
 - Echo CSV (analyst overrides)
-- NVD API (mock)
-- OSV API (mock)
+- NVD API (live, optional mock)
+- OSV data dump (live, optional mock)
 """
 from .base_adapter import BaseAdapter, SourceHealth, SourceObservation
 from .echo_csv_adapter import EchoCsvAdapter

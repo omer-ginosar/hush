@@ -10,6 +10,7 @@ Comprehensive test suite for the CVE advisory enrichment pipeline.
   - Tests for Echo, NVD, OSV, and CSV adapters
   - Normalization and data extraction logic
   - Error handling and edge cases
+  - NVD/OSV tests run in mock mode by default (`use_mock: true`)
 
 - **test_storage.py** - Storage layer tests
   - Database schema initialization
