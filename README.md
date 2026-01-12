@@ -1,6 +1,6 @@
-# CVE Advisory Pipeline
+# 🌑 Hush - CVE Advisory Pipeline
 
-Production-quality CVE advisory enrichment pipeline built with Python, DuckDB, and dbt.
+CVE advisory enrichment pipeline prototype built with Python, DuckDB, and dbt.
 
 ## Overview
 

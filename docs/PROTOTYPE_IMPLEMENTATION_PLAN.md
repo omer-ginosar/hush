@@ -3366,7 +3366,8 @@ Phase 8's demo enhancement revealed 4 critical architectural issues from Phase 7
 
 **Issue**: The `advisory_state_history` table exists but remains empty after pipeline runs.
 
-**Root Cause**: The Phase 7 pipeline uses dbt to write directly to `mart_advisory_current`, completely bypassing the `storage/scd2_manager.py` module. The SCD2 manager is never invoked.
+**Root Cause**: The Phase 7 pipeline uses dbt to write directly to `mart_advisory_current`. The system is missing the usage of "dbt snapshot" for generating the `mart_advisory_history`SCD2 table.
+The `storage/scd2_manager.py` module should not be used as it is redundat with the dbt snapshot.
 
 **Impact**:
 - No historical state tracking

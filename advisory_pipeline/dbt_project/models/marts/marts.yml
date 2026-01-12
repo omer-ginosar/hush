@@ -35,10 +35,14 @@ models:
               values: ['high', 'medium', 'low']
 
   - name: mart_advisory_current
-    description: "Current advisory states with human-readable explanations"
+    description: |
+      Current advisory states with human-readable explanations (PACKAGE-LEVEL GRANULARITY).
+      This is the base mart that maintains package-level detail. Each CVE may appear
+      multiple times if it affects multiple packages. For CVE-level aggregation,
+      use mart_advisory_current_by_cve instead.
     columns:
       - name: advisory_id
-        description: "Unique advisory identifier"
+        description: "Unique advisory identifier (package:CVE or CVE-only for NVD records)"
         tests:
           - unique
           - not_null
@@ -50,3 +54,32 @@ models:
         description: "Advisory state"
         tests:
           - not_null
+
+  - name: mart_advisory_current_by_cve
+    description: |
+      CVE-level deduplicated view of current advisory states (ONE ROW PER CVE).
+      Aggregates package-level advisories using "worst state wins" priority.
+      Use this for reporting, dashboards, and simple CVE lookups.
+      Use mart_advisory_current for package-level analysis and detailed triage.
+    columns:
+      - name: advisory_id
+        description: "CVE identifier (unique, one row per CVE)"
+        tests:
+          - unique
+          - not_null
+      - name: cve_id
+        description: "CVE identifier"
+        tests:
+          - not_null
+      - name: affected_packages
+        description: "List of all packages affected by this CVE"
+      - name: package_count
+        description: "Number of packages affected"
+      - name: primary_package
+        description: "Primary package used for state determination (highest priority)"
+      - name: state
+        description: "Advisory state (from highest priority package)"
+        tests:
+          - not_null
+      - name: explanation_with_context
+        description: "Explanation including multi-package context when applicable"
