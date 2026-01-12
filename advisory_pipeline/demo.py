@@ -146,6 +146,19 @@ def setup_mock_data():
             },
             {
                 "id": "GHSA-0002-0002-0002",
+                "aliases": ["CVE-2024-0002"],
+                "summary": "Information disclosure vulnerability",
+                "affected": [{
+                    "package": {"name": "auth-lib", "ecosystem": "PyPI"},
+                    "ranges": [{
+                        "type": "ECOSYSTEM",
+                        "events": [{"introduced": "0"}]  # No fix initially
+                    }]
+                }],
+                "references": []
+            },
+            {
+                "id": "GHSA-0003-0003-0003",
                 "aliases": ["CVE-2024-0003"],
                 "summary": "SQL injection in database handler",
                 "affected": [{
@@ -160,7 +173,7 @@ def setup_mock_data():
                 ]
             },
             {
-                "id": "GHSA-0003-0003-0003",
+                "id": "GHSA-0004-0004-0004",
                 "aliases": ["CVE-2024-0004"],
                 "summary": "Denial of service via crafted input",
                 "affected": [{
@@ -211,8 +224,7 @@ def create_csv_override(include_override: bool = False):
     Create CSV override file.
 
     Args:
-        include_override: If True, adds CVE-2024-0003 as not_applicable
-                         (overrides the OSV fix signal)
+        include_override: If True, adds CVE-2024-0002 as not_applicable
     """
     # Write to the path configured in config.yaml
     csv_path = Path("../advisory_not_applicable.csv")
@@ -224,7 +236,7 @@ def create_csv_override(include_override: bool = False):
             reader = csv.DictReader(f)
             for row in reader:
                 # Skip our demo CVEs - we'll conditionally add them back
-                if row.get("cve_id") not in ["CVE-2024-0003"]:
+                if row.get("cve_id") not in ["CVE-2024-0002"]:
                     existing_overrides.append(row)
 
     # Write back: existing overrides + optionally the demo override
@@ -241,8 +253,8 @@ def create_csv_override(include_override: bool = False):
         # Add demo override only in Run 2 (when include_override=True)
         if include_override:
             writer.writerow({
-                "cve_id": "CVE-2024-0003",
-                "package": "db-handler",  # Package-specific override
+                "cve_id": "CVE-2024-0002",
+                "package": "auth-lib",  # Package-specific override
                 "status": "not_applicable",
                 "fixed_version": "",
                 "internal_status": "demo_override"
@@ -432,14 +444,15 @@ def show_scd2_table(db: Database, cve_ids: list, run_number: int):
 def run_demo():
     """Execute full demo scenario."""
     # CVEs to track throughout the demo
-    tracked_cves = ["CVE-2024-0001", "CVE-2024-0003", "CVE-2024-0004"]
+    tracked_cves = ["CVE-2024-0001", "CVE-2024-0002", "CVE-2024-0003", "CVE-2024-0004"]
 
     print("\n" + "=" * 70)
     print("CVE ADVISORY PIPELINE - DEMONSTRATION")
     print("=" * 70)
-    print("\nThis demo tracks 3 CVEs through 3 pipeline runs:")
+    print("\nThis demo tracks 4 CVEs through 3 pipeline runs:")
     print("  • CVE-2024-0001 (example-package): Has fix in OSV from start")
-    print("  • CVE-2024-0003 (db-handler): Fixed initially, overridden in Run 2")
+    print("  • CVE-2024-0002 (auth-lib): No fix initially, overridden in Run 2")
+    print("  • CVE-2024-0003 (db-handler): Has fix in OSV from start")
     print("  • CVE-2024-0004 (parser-lib): No fix initially, gets fix in Run 3")
     print("=" * 70)
 
@@ -472,8 +485,7 @@ def run_demo():
     print("\n" + "=" * 70)
     print("RUN 2: CSV OVERRIDE")
     print("=" * 70)
-    print("Input: Analyst adds CSV override for CVE-2024-0003 → not_applicable")
-    print("       (Overrides the OSV fix signal for db-handler package)")
+    print("Input: Analyst adds CSV override for CVE-2024-0002 → not_applicable")
 
     create_csv_override(include_override=True)
 
@@ -514,10 +526,11 @@ def run_demo():
     print("DEMO COMPLETE - CVE LIFECYCLE SUMMARY")
     print("=" * 70)
     print(f"\nTotal advisories processed: {metrics3.advisories_total}")
-    print(f"(Includes ~40k real CVEs from Echo data.json + 3 mock CVEs)")
+    print(f"(Includes ~40k real CVEs from Echo data.json + 4 mock CVEs)")
     print("\n🎯 Mock CVE Journey - What Happened:")
     print("  ✅ CVE-2024-0001: Started fixed (OSV had fix from Run 1)")
-    print("  ✅ CVE-2024-0003: fixed → not_applicable (CSV override in Run 2)")
+    print("  ✅ CVE-2024-0002: under_investigation → not_applicable (CSV override in Run 2)")
+    print("  ✅ CVE-2024-0003: Started fixed (OSV had fix from Run 1)")
     print("  ✅ CVE-2024-0004: under_investigation → fixed (Fix added in Run 3)")
     print("\n💡 What This Demo Shows:")
     print("  ✅ Visual CVE journey tracking across pipeline runs")
