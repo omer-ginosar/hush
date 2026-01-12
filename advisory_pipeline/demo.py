@@ -56,79 +56,24 @@ def clean_demo_environment():
 
 def setup_mock_data():
     """
-    Create mock response files for NVD and OSV.
+    Create mock response files for OSV (NVD uses real API).
 
     Demo tracks 4 REAL CVEs from Echo's data.json:
     - CVE-2020-10735 (python3.11): Already has fix in Echo data
     - CVE-2008-4677 (vim): No fix initially, analyst overrides in Run 2
     - CVE-2023-37920 (python-certifi): Already has fix, stays fixed
     - CVE-2025-14017 (curl): No fix initially, gets upstream fix in Run 3
+
+    Data sources:
+    - Echo data.json: Real production data (40k+ CVEs)
+    - NVD API: Real API calls (4 specific CVEs)
+    - OSV: Mock data (for demo control of Run 3 fix injection)
     """
     mock_dir = Path("ingestion/mock_responses")
     mock_dir.mkdir(parents=True, exist_ok=True)
 
-    # NVD mock responses for real CVEs
-    nvd_data = {
-        "vulnerabilities": [
-            {
-                "cve": {
-                    "id": "CVE-2020-10735",
-                    "vulnStatus": "Analyzed",
-                    "descriptions": [
-                        {"lang": "en", "value": "Integer overflow in Python string-to-integer conversion"}
-                    ],
-                    "metrics": {
-                        "cvssMetricV31": [{
-                            "cvssData": {
-                                "baseScore": 7.5,
-                                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
-                            }
-                        }]
-                    },
-                    "references": [{"url": "https://python.org/advisory/CVE-2020-10735"}]
-                }
-            },
-            {
-                "cve": {
-                    "id": "CVE-2023-37920",
-                    "vulnStatus": "Analyzed",
-                    "descriptions": [
-                        {"lang": "en", "value": "Certifi certificate trust store issue"}
-                    ],
-                    "metrics": {
-                        "cvssMetricV31": [{
-                            "cvssData": {
-                                "baseScore": 5.0,
-                                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N"
-                            }
-                        }]
-                    },
-                    "references": []
-                }
-            },
-            {
-                "cve": {
-                    "id": "CVE-2008-4677",
-                    "vulnStatus": "Analyzed",
-                    "descriptions": [
-                        {"lang": "en", "value": "Vim arbitrary command execution"}
-                    ],
-                    "metrics": {
-                        "cvssMetricV31": [{
-                            "cvssData": {
-                                "baseScore": 9.8,
-                                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
-                            }
-                        }]
-                    },
-                    "references": [{"url": "https://www.vim.org/security/"}]
-                }
-            }
-        ]
-    }
-
-    with open(mock_dir / "nvd_responses.json", "w") as f:
-        json.dump(nvd_data, f, indent=2)
+    # NVD: Using real API (no mock needed)
+    # The demo config will fetch only our 4 tracked CVEs from NVD API
 
     # Initial OSV responses (Run 1 & 2) - using real CVEs
     osv_data_initial = {
@@ -193,11 +138,18 @@ def setup_mock_data():
     with open(mock_dir / "osv_responses.json", "w") as f:
         json.dump(osv_data_initial, f, indent=2)
 
-    print("Created mock API response files")
+    print("Created mock OSV response files (NVD will use real API)")
 
 
 def build_demo_config() -> Path:
-    """Create a demo-specific config that forces mock adapters."""
+    """
+    Create demo-specific config that uses real NVD API for tracked CVEs.
+
+    This configuration:
+    - Uses REAL NVD API (fetches only our 4 tracked CVEs)
+    - Uses mock OSV data (for demo control)
+    - Keeps Echo data.json and CSV as-is
+    """
     config_path = Path("config.yaml")
     if not config_path.exists():
         raise FileNotFoundError("config.yaml not found for demo")
@@ -208,7 +160,19 @@ def build_demo_config() -> Path:
     config.setdefault("sources", {})
     config["sources"].setdefault("nvd", {})
     config["sources"].setdefault("osv", {})
-    config["sources"]["nvd"]["use_mock"] = True
+
+    # NVD: Use REAL API but fetch only our 4 tracked CVEs
+    config["sources"]["nvd"]["use_mock"] = False
+    config["sources"]["nvd"]["cve_ids"] = [
+        "CVE-2020-10735",
+        "CVE-2008-4677",
+        "CVE-2023-37920",
+        "CVE-2025-14017"
+    ]
+    config["sources"]["nvd"]["max_records"] = 10  # Small limit for fast demo
+    config["sources"]["nvd"]["rate_limit_per_minute"] = 50  # Conservative for API
+
+    # OSV: Keep using mock for demo control (Run 3 fix injection)
     config["sources"]["osv"]["use_mock"] = True
 
     output_dir = Path("output")
