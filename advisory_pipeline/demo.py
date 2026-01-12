@@ -352,7 +352,7 @@ def show_cve_journey(db: Database, cve_ids: list, run_number: int):
             print(f"\n  ❌ {cve_id}: Not found")
             continue
 
-        # Show primary entry (with package if available)
+        # Show all affected packages (as peers, not hierarchy)
         for idx, result in enumerate(results):
             cve, pkg, state, version, reason, explanation, confidence, rule = result
 
@@ -360,9 +360,8 @@ def show_cve_journey(db: Database, cve_ids: list, run_number: int):
             icon = "✅" if state in ["fixed", "not_applicable"] else "⏳"
 
             pkg_display = pkg if pkg else "NULL"
-            prefix = "  " if idx == 0 else "     ↳"
 
-            print(f"\n  {prefix} {icon} {cve_id} ({pkg_display})")
+            print(f"\n     {icon} {cve_id} ({pkg_display})")
             print(f"       State: {state} (confidence: {confidence})")
             if version:
                 print(f"       Fixed in: {version}")
