@@ -58,20 +58,24 @@ def setup_mock_data():
     """
     Create mock response files for NVD and OSV.
 
-    This simulates the data that would be fetched from real APIs.
+    Demo tracks 4 REAL CVEs from Echo's data.json:
+    - CVE-2020-10735 (python3.11): Already has fix in Echo data
+    - CVE-2008-4677 (vim): No fix initially, analyst overrides in Run 2
+    - CVE-2023-37920 (python-certifi): Already has fix, stays fixed
+    - CVE-2025-14017 (curl): No fix initially, gets upstream fix in Run 3
     """
     mock_dir = Path("ingestion/mock_responses")
     mock_dir.mkdir(parents=True, exist_ok=True)
 
-    # NVD mock responses
+    # NVD mock responses for real CVEs
     nvd_data = {
         "vulnerabilities": [
             {
                 "cve": {
-                    "id": "CVE-2024-0001",
+                    "id": "CVE-2020-10735",
                     "vulnStatus": "Analyzed",
                     "descriptions": [
-                        {"lang": "en", "value": "Buffer overflow in example package"}
+                        {"lang": "en", "value": "Integer overflow in Python string-to-integer conversion"}
                     ],
                     "metrics": {
                         "cvssMetricV31": [{
@@ -81,15 +85,15 @@ def setup_mock_data():
                             }
                         }]
                     },
-                    "references": [{"url": "https://example.com/advisory/1"}]
+                    "references": [{"url": "https://python.org/advisory/CVE-2020-10735"}]
                 }
             },
             {
                 "cve": {
-                    "id": "CVE-2024-0002",
+                    "id": "CVE-2023-37920",
                     "vulnStatus": "Analyzed",
                     "descriptions": [
-                        {"lang": "en", "value": "Information disclosure"}
+                        {"lang": "en", "value": "Certifi certificate trust store issue"}
                     ],
                     "metrics": {
                         "cvssMetricV31": [{
@@ -104,10 +108,10 @@ def setup_mock_data():
             },
             {
                 "cve": {
-                    "id": "CVE-2024-0003",
+                    "id": "CVE-2008-4677",
                     "vulnStatus": "Analyzed",
                     "descriptions": [
-                        {"lang": "en", "value": "SQL injection vulnerability"}
+                        {"lang": "en", "value": "Vim arbitrary command execution"}
                     ],
                     "metrics": {
                         "cvssMetricV31": [{
@@ -117,7 +121,7 @@ def setup_mock_data():
                             }
                         }]
                     },
-                    "references": [{"url": "https://example.com/advisory/3"}]
+                    "references": [{"url": "https://www.vim.org/security/"}]
                 }
             }
         ]
@@ -126,61 +130,59 @@ def setup_mock_data():
     with open(mock_dir / "nvd_responses.json", "w") as f:
         json.dump(nvd_data, f, indent=2)
 
-    # Initial OSV responses (Run 1 & 2)
+    # Initial OSV responses (Run 1 & 2) - using real CVEs
     osv_data_initial = {
         "vulns": [
             {
-                "id": "GHSA-0001-0001-0001",
-                "aliases": ["CVE-2024-0001"],
-                "summary": "Buffer overflow allows remote code execution",
+                "id": "GHSA-p2g7-xwvr-rrw3",
+                "aliases": ["CVE-2020-10735"],
+                "summary": "Integer overflow in Python string-to-integer conversion",
                 "affected": [{
-                    "package": {"name": "example-package", "ecosystem": "PyPI"},
+                    "package": {"name": "python3.11", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "0"}, {"fixed": "1.2.3"}]
+                        "events": [{"introduced": "0"}, {"fixed": "3.11.0~rc2-1"}]
                     }]
                 }],
                 "references": [
-                    {"type": "FIX", "url": "https://github.com/example/commit/abc123"}
+                    {"type": "FIX", "url": "https://github.com/python/cpython/issues/95778"}
                 ]
             },
             {
-                "id": "GHSA-0002-0002-0002",
-                "aliases": ["CVE-2024-0002"],
-                "summary": "Information disclosure vulnerability",
+                "id": "GHSA-xqr8-7jwr-rhp7",
+                "aliases": ["CVE-2023-37920"],
+                "summary": "Certifi certificate trust store issue",
                 "affected": [{
-                    "package": {"name": "auth-lib", "ecosystem": "PyPI"},
+                    "package": {"name": "python-certifi", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "0"}]  # No fix initially
+                        "events": [{"introduced": "0"}, {"fixed": "2022.9.24-1"}]
                     }]
                 }],
                 "references": []
             },
             {
-                "id": "GHSA-0003-0003-0003",
-                "aliases": ["CVE-2024-0003"],
-                "summary": "SQL injection in database handler",
+                "id": "GHSA-vim-2008-4677",
+                "aliases": ["CVE-2008-4677"],
+                "summary": "Vim arbitrary command execution vulnerability",
                 "affected": [{
-                    "package": {"name": "db-handler", "ecosystem": "npm"},
+                    "package": {"name": "vim", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "1.0.0"}, {"fixed": "2.0.0"}]
+                        "events": [{"introduced": "0"}]  # No fix in Echo data
                     }]
                 }],
-                "references": [
-                    {"type": "FIX", "url": "https://github.com/example/commit/def456"}
-                ]
+                "references": []
             },
             {
-                "id": "GHSA-0004-0004-0004",
-                "aliases": ["CVE-2024-0004"],
-                "summary": "Denial of service via crafted input",
+                "id": "GHSA-curl-2025-14017",
+                "aliases": ["CVE-2025-14017"],
+                "summary": "Curl security vulnerability",
                 "affected": [{
-                    "package": {"name": "parser-lib", "ecosystem": "PyPI"},
+                    "package": {"name": "curl", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "0"}]  # No fix yet
+                        "events": [{"introduced": "0"}]  # No fix yet (will add in Run 3)
                     }]
                 }],
                 "references": []
@@ -221,99 +223,101 @@ def build_demo_config() -> Path:
 
 def create_csv_override(include_override: bool = False):
     """
-    Create CSV override file.
+    Manage CSV override file for demo.
 
     Args:
-        include_override: If True, adds CVE-2024-0002 as not_applicable
+        include_override: If True, adds CVE-2008-4677 as not_applicable (Run 2+)
+                         If False, uses CSV as-is (Run 1)
+
+    Demo flow:
+    - Run 1: CVE-2008-4677 NOT in CSV → shows as pending_upstream
+    - Run 2: CVE-2008-4677 ADDED to CSV → shows as not_applicable (analyst override)
+    - Run 3: CVE-2008-4677 stays in CSV → remains not_applicable
     """
-    # Write to the path configured in config.yaml
     csv_path = Path("../advisory_not_applicable.csv")
 
-    # Always read existing CSV and filter out demo CVEs
+    # Read existing CSV (don't modify it)
     existing_overrides = []
     if csv_path.exists():
         with open(csv_path, "r", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Skip our demo CVEs - we'll conditionally add them back
-                if row.get("cve_id") not in ["CVE-2024-0002"]:
-                    existing_overrides.append(row)
+                existing_overrides.append(row)
 
-    # Write back: existing overrides + optionally the demo override
+    # Write back with optional demo CVE
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[
             "cve_id", "package", "status", "fixed_version", "internal_status"
         ])
         writer.writeheader()
 
-        # Write existing overrides first
+        # Write all existing overrides
         for row in existing_overrides:
             writer.writerow(row)
 
-        # Add demo override only in Run 2 (when include_override=True)
+        # Add demo override in Run 2+ (when include_override=True)
         if include_override:
             writer.writerow({
-                "cve_id": "CVE-2024-0002",
-                "package": "auth-lib",  # Package-specific override
+                "cve_id": "CVE-2008-4677",
+                "package": "vim",
                 "status": "not_applicable",
                 "fixed_version": "",
-                "internal_status": "demo_override"
+                "internal_status": "Internal classification - not exploitable in our environment"
             })
 
 
 def update_osv_with_new_fix():
     """
-    Update OSV mock to include fix for CVE-2024-0004.
+    Update OSV mock to include fix for CVE-2025-14017.
 
-    This simulates upstream providing a fix in Run 3.
+    DEMO SIMULATION: This simulates upstream providing a fix in Run 3.
+    In production, this would come from a fresh OSV data dump fetch.
     """
     mock_dir = Path("ingestion/mock_responses")
 
     osv_data_with_fix = {
         "vulns": [
             {
-                "id": "GHSA-0001-0001-0001",
-                "aliases": ["CVE-2024-0001"],
-                "summary": "Buffer overflow allows remote code execution",
+                "id": "GHSA-p2g7-xwvr-rrw3",
+                "aliases": ["CVE-2020-10735"],
+                "summary": "Integer overflow in Python string-to-integer conversion",
                 "affected": [{
-                    "package": {"name": "example-package", "ecosystem": "PyPI"},
+                    "package": {"name": "python3.11", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "0"}, {"fixed": "1.2.3"}]
+                        "events": [{"introduced": "0"}, {"fixed": "3.11.0~rc2-1"}]
                     }]
                 }],
                 "references": [
-                    {"type": "FIX", "url": "https://github.com/example/commit/abc123"}
+                    {"type": "FIX", "url": "https://github.com/python/cpython/issues/95778"}
                 ]
             },
             {
-                "id": "GHSA-0002-0002-0002",
-                "aliases": ["CVE-2024-0003"],
-                "summary": "SQL injection in database handler",
+                "id": "GHSA-vim-2008-4677",
+                "aliases": ["CVE-2008-4677"],
+                "summary": "Vim arbitrary command execution vulnerability",
                 "affected": [{
-                    "package": {"name": "db-handler", "ecosystem": "npm"},
+                    "package": {"name": "vim", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "1.0.0"}, {"fixed": "2.0.0"}]
+                        "events": [{"introduced": "0"}]  # Still no fix
                     }]
                 }],
-                "references": [
-                    {"type": "FIX", "url": "https://github.com/example/commit/def456"}
-                ]
+                "references": []
             },
             {
-                "id": "GHSA-0003-0003-0003",
-                "aliases": ["CVE-2024-0004"],
-                "summary": "Denial of service via crafted input",
+                "id": "GHSA-curl-2025-14017",
+                "aliases": ["CVE-2025-14017"],
+                "summary": "Curl security vulnerability",
                 "affected": [{
-                    "package": {"name": "parser-lib", "ecosystem": "PyPI"},
+                    "package": {"name": "curl", "ecosystem": "Debian"},
                     "ranges": [{
                         "type": "ECOSYSTEM",
-                        "events": [{"introduced": "0"}, {"fixed": "3.0.0"}]  # NOW FIXED!
+                        "events": [{"introduced": "0"}, {"fixed": "8.12.0-1"}]  # NOW FIXED!
                     }]
                 }],
                 "references": [
-                    {"type": "FIX", "url": "https://github.com/parser/commit/ghi789"}
+                    {"type": "FIX", "url": "https://github.com/curl/curl/commit/simulated-fix"}
                 ]
             }
         ]
@@ -443,17 +447,17 @@ def show_scd2_table(db: Database, cve_ids: list, run_number: int):
 
 def run_demo():
     """Execute full demo scenario."""
-    # CVEs to track throughout the demo
-    tracked_cves = ["CVE-2024-0001", "CVE-2024-0002", "CVE-2024-0003", "CVE-2024-0004"]
+    # REAL CVEs to track throughout the demo (from Echo's data.json)
+    tracked_cves = ["CVE-2020-10735", "CVE-2023-37920", "CVE-2008-4677", "CVE-2025-14017"]
 
     print("\n" + "=" * 70)
     print("CVE ADVISORY PIPELINE - DEMONSTRATION")
     print("=" * 70)
-    print("\nThis demo tracks 4 CVEs through 3 pipeline runs:")
-    print("  • CVE-2024-0001 (example-package): Has fix in OSV from start")
-    print("  • CVE-2024-0002 (auth-lib): No fix initially, overridden in Run 2")
-    print("  • CVE-2024-0003 (db-handler): Has fix in OSV from start")
-    print("  • CVE-2024-0004 (parser-lib): No fix initially, gets fix in Run 3")
+    print("\nThis demo tracks 4 REAL CVEs through 3 pipeline runs:")
+    print("  • CVE-2020-10735 (python3.11): Has fix from start")
+    print("  • CVE-2008-4677 (vim): No fix, analyst overrides in Run 2")
+    print("  • CVE-2023-37920 (python-certifi): Has fix, stays fixed")
+    print("  • CVE-2025-14017 (curl): No fix initially, gets upstream fix in Run 3")
     print("=" * 70)
 
     # Setup
@@ -465,7 +469,9 @@ def run_demo():
     print("\n" + "=" * 70)
     print("RUN 1: INITIAL LOAD")
     print("=" * 70)
-    print("Input: Echo data.json + NVD + OSV (CVE-0001 and CVE-0003 have fixes)")
+    print("Input: Echo data.json + NVD + OSV")
+    print("       CVE-2020-10735 & CVE-2023-37920 have fixes from upstream")
+    print("       CVE-2008-4677 & CVE-2025-14017 have no fix yet")
 
     create_csv_override(include_override=False)
 
@@ -483,9 +489,10 @@ def run_demo():
 
     # === RUN 2: CSV Override ===
     print("\n" + "=" * 70)
-    print("RUN 2: CSV OVERRIDE")
+    print("RUN 2: ANALYST OVERRIDE")
     print("=" * 70)
-    print("Input: Analyst adds CSV override for CVE-2024-0002 → not_applicable")
+    print("Input: Analyst adds CVE-2008-4677 (vim) to CSV → not_applicable")
+    print("       (Shows CSV override changes state from pending_upstream)")
 
     create_csv_override(include_override=True)
 
@@ -503,9 +510,10 @@ def run_demo():
 
     # === RUN 3: Upstream Fix ===
     print("\n" + "=" * 70)
-    print("RUN 3: UPSTREAM FIX DETECTED")
+    print("RUN 3: UPSTREAM FIX DETECTED (SIMULATED)")
     print("=" * 70)
-    print("Input: OSV now reports fix for CVE-2024-0004 (version 3.0.0)")
+    print("Input: OSV now reports fix for CVE-2025-14017 (version 8.12.0-1)")
+    print("       NOTE: Simulated for demo - in production this comes from OSV dump")
 
     update_osv_with_new_fix()
 
