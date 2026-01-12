@@ -1,4 +1,4 @@
-# 🌑 Hush — CVE Advisory Pipeline
+# 🌑 Hush - CVE Advisory Pipeline
 
 Home-assignment repo: a production-style CVE advisory enrichment pipeline built with Python, DuckDB, and dbt.
 
@@ -137,6 +137,6 @@ hush/
 
 ## 📌 Status
 
-- **Phase completion**: ✅ All 9 development phases complete
+- **Phase completion**: ✅ All development phases complete
 - **Last updated**: 2026-01-12
 - **Test status**: 84 tests passing
