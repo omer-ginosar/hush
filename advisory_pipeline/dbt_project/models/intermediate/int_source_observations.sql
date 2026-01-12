@@ -15,8 +15,8 @@ with echo_advisories as (
         null::varchar as rejection_status,
         cvss_score,
         null::varchar as cvss_vector,
-        fix_available,
-        fixed_version,
+        null::boolean as fix_available,
+        null::varchar as fixed_version,
         notes,
         run_id
     from {{ ref('stg_echo_advisories') }}

@@ -211,19 +211,20 @@ def create_csv_override(include_override: bool = False):
     Create CSV override file.
 
     Args:
-        include_override: If True, adds CVE-2024-0002 as not_applicable
+        include_override: If True, adds CVE-2024-0003 as not_applicable
+                         (overrides the OSV fix signal)
     """
     # Write to the path configured in config.yaml
     csv_path = Path("../advisory_not_applicable.csv")
 
-    # Always read existing CSV and filter out demo CVE
+    # Always read existing CSV and filter out demo CVEs
     existing_overrides = []
     if csv_path.exists():
         with open(csv_path, "r", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Skip our demo CVE - we'll conditionally add it back
-                if row.get("cve_id") != "CVE-2024-0002":
+                # Skip our demo CVEs - we'll conditionally add them back
+                if row.get("cve_id") not in ["CVE-2024-0003"]:
                     existing_overrides.append(row)
 
     # Write back: existing overrides + optionally the demo override
@@ -240,8 +241,8 @@ def create_csv_override(include_override: bool = False):
         # Add demo override only in Run 2 (when include_override=True)
         if include_override:
             writer.writerow({
-                "cve_id": "CVE-2024-0002",
-                "package": "",  # Empty to match NVD-only entry (NULL package_name)
+                "cve_id": "CVE-2024-0003",
+                "package": "db-handler",  # Package-specific override
                 "status": "not_applicable",
                 "fixed_version": "",
                 "internal_status": "demo_override"
@@ -431,16 +432,15 @@ def show_scd2_table(db: Database, cve_ids: list, run_number: int):
 def run_demo():
     """Execute full demo scenario."""
     # CVEs to track throughout the demo
-    tracked_cves = ["CVE-2024-0001", "CVE-2024-0002", "CVE-2024-0003", "CVE-2024-0004"]
+    tracked_cves = ["CVE-2024-0001", "CVE-2024-0003", "CVE-2024-0004"]
 
     print("\n" + "=" * 70)
     print("CVE ADVISORY PIPELINE - DEMONSTRATION")
     print("=" * 70)
-    print("\nThis demo tracks 4 CVEs through 3 pipeline runs:")
-    print("  • CVE-2024-0001: Has fix in OSV from start")
-    print("  • CVE-2024-0002: Will be overridden by analyst in Run 2")
-    print("  • CVE-2024-0003: Has fix in OSV from start")
-    print("  • CVE-2024-0004: No fix initially, gets fix in Run 3")
+    print("\nThis demo tracks 3 CVEs through 3 pipeline runs:")
+    print("  • CVE-2024-0001 (example-package): Has fix in OSV from start")
+    print("  • CVE-2024-0003 (db-handler): Fixed initially, overridden in Run 2")
+    print("  • CVE-2024-0004 (parser-lib): No fix initially, gets fix in Run 3")
     print("=" * 70)
 
     # Setup
@@ -472,7 +472,8 @@ def run_demo():
     print("\n" + "=" * 70)
     print("RUN 2: CSV OVERRIDE")
     print("=" * 70)
-    print("Input: Analyst adds CSV override for CVE-2024-0002 → not_applicable")
+    print("Input: Analyst adds CSV override for CVE-2024-0003 → not_applicable")
+    print("       (Overrides the OSV fix signal for db-handler package)")
 
     create_csv_override(include_override=True)
 
@@ -513,28 +514,29 @@ def run_demo():
     print("DEMO COMPLETE - CVE LIFECYCLE SUMMARY")
     print("=" * 70)
     print(f"\nTotal advisories processed: {metrics3.advisories_total}")
-    print(f"(Includes ~40k real CVEs from Echo data.json + 4 mock CVEs)")
+    print(f"(Includes ~40k real CVEs from Echo data.json + 3 mock CVEs)")
     print("\n🎯 Mock CVE Journey - What Happened:")
     print("  ✅ CVE-2024-0001: Started fixed (OSV had fix from Run 1)")
-    print("  ✅ CVE-2024-0002: Overridden to not_applicable (CSV override in Run 2)")
-    print("  ✅ CVE-2024-0003: Started fixed (OSV had fix from Run 1)")
+    print("  ✅ CVE-2024-0003: fixed → not_applicable (CSV override in Run 2)")
     print("  ✅ CVE-2024-0004: under_investigation → fixed (Fix added in Run 3)")
     print("\n💡 What This Demo Shows:")
     print("  ✅ Visual CVE journey tracking across pipeline runs")
     print("  ✅ SCD2 history tracking with state transitions over time")
     print("  ✅ CSV override priority (analyst decisions override upstream)")
     print("  ✅ Upstream fix detection (OSV fix triggers state change)")
-    print("  ✅ Multiple source entries for same CVE (NVD + OSV)")
+    print("  ✅ Package-level granularity (NVD enrichment denormalized)")
     print("  ✅ Rule-based decision making with explanations")
-    print("  ✅ State distribution across large real dataset")
+    print("  ✅ State distribution across large real dataset (~40k CVEs)")
     print("\n📊 Architecture Highlights:")
     print("  • 3-stage pipeline: Ingestion → dbt transformation → Export")
     print("  • dbt snapshots for SCD Type 2 state tracking")
     print("  • Priority-based decision engine (CSV > NVD > OSV)")
     print("  • Confidence scoring based on signal quality")
-    print("\n⚠️  Known Limitation:")
-    print("  • Duplicate CVE entries (one per source: NVD-only + package-specific)")
-    print("    This is by design - different granularity levels serve different needs")
+    print("  • Single granularity: package-level with CVE metadata denormalized")
+    print("\n✅ Granularity Fix Applied:")
+    print("  • NO MORE duplicate CVE-only entries (NVD data denormalized)")
+    print("  • All advisories are package-level with enriched CVE metadata")
+    print("  • CVEs without package context are excluded (per architecture design)")
     print("\nOutput files: output/advisory_current.json, output/run_report_*.md")
     print("=" * 70 + "\n")
 

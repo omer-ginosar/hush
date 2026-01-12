@@ -1,2 +1,2 @@
 package_name,cve_id,status,reason,analyst,updated_at
-example-package,CVE-2024-0002,not_applicable,Vulnerable code path not used in our configuration,security-team,2026-01-11T22:46:59.766667
+example-package,CVE-2024-0002,not_applicable,Vulnerable code path not used in our configuration,security-team,2026-01-12T10:55:03.849952
