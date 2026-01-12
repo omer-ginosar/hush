@@ -31,7 +31,7 @@ Sources (Echo/NVD/OSV) → Adapters → Raw Tables → dbt → Marts → Rules �
 1. **Ingestion** - Fetch and normalize multi-source data
 2. **Loading** - Write to raw DuckDB tables
 3. **Transformation** - dbt staging → intermediate → marts
-4. **Decisioning** - Apply priority-ordered rules
+4. **State Tracking** - dbt snapshot for SCD Type 2 history
 5. **Quality Checks** - Validate outputs
 6. **Reporting** - Generate metrics and reports
 
@@ -81,7 +81,15 @@ SQL-based data transformations.
 - `int_source_observations` - Unified source view
 - `int_enriched_advisories` - Aggregated signals
 - `mart_advisory_decisions` - Rule evaluations
-- `mart_advisory_current` - Current states
+- `mart_advisory_current` - Current states (PACKAGE-LEVEL)
+- `mart_advisory_current_by_cve` - Deduplicated (CVE-LEVEL)
+- `mart_advisory_state_history` - Historical state tracking (SCD2)
+
+**Snapshots:**
+- `advisory_state_snapshot` - dbt snapshot for SCD Type 2 tracking
+
+**Important**: Use `mart_advisory_current_by_cve` for reporting/dashboards (one row per CVE).
+Use `mart_advisory_current` for detailed analyst triage (package-level granularity).
 
 **See:** [dbt_project/README.md](dbt_project/README.md)
 

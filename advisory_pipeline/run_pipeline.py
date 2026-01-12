@@ -145,6 +145,10 @@ class AdvisoryPipeline:
             logger.info("Stage 3: Running dbt transformations")
             self._run_dbt_models(run_id)
 
+            # Stage 3b: dbt snapshots (SCD2 state tracking)
+            logger.info("Stage 3b: Running dbt snapshots")
+            self._run_dbt_snapshots(run_id)
+
             # Stage 4: Export outputs
             logger.info("Stage 4: Exporting advisory state")
             self._export_current_state()
@@ -294,6 +298,48 @@ class AdvisoryPipeline:
 
         logger.info("  dbt models completed successfully")
 
+    def _run_dbt_snapshots(self, run_id: str):
+        """
+        Execute dbt snapshots to track state changes over time.
+
+        dbt snapshots implement SCD Type 2 pattern, automatically detecting
+        changes in mart_advisory_current and creating history records.
+
+        Args:
+            run_id: Pipeline run identifier (passed to dbt as env var)
+
+        Raises:
+            RuntimeError: If dbt snapshot execution fails
+        """
+        script_dir = Path(__file__).parent
+        dbt_dir = script_dir / "dbt_project"
+
+        # Close database connection before dbt runs
+        self.db.close()
+
+        # Set run ID as environment variable for dbt
+        env = os.environ.copy()
+        env["PIPELINE_RUN_ID"] = run_id
+
+        # Execute dbt snapshot
+        result = subprocess.run(
+            ["dbt", "snapshot", "--profiles-dir", "."],
+            cwd=dbt_dir,
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        # Reconnect database after dbt completes
+        self.db.connect()
+
+        if result.returncode != 0:
+            logger.error(f"dbt snapshot stdout:\n{result.stdout}")
+            logger.error(f"dbt snapshot stderr:\n{result.stderr}")
+            raise RuntimeError(f"dbt snapshot failed with code {result.returncode}")
+
+        logger.info("  dbt snapshots completed successfully")
+
     def _export_current_state(self):
         """
         Export current advisory state to JSON file.
@@ -398,7 +444,7 @@ class AdvisoryPipeline:
         Queries:
         - State distribution (count by state)
         - Total advisories processed
-        - State transitions (from dbt outputs)
+        - State changes (from dbt snapshot history)
 
         Args:
             metrics: RunMetrics to update
@@ -421,6 +467,48 @@ class AdvisoryPipeline:
 
         metrics.advisories_total = total
         metrics.advisories_processed = total
+
+        # Count state changes in this run from snapshot history
+        # State changes are records where dbt_updated_at matches current run
+        # and there exists a previous record (dbt_valid_from < current run time)
+        try:
+            snapshot_exists = conn.execute("""
+                SELECT count(*)
+                FROM information_schema.tables
+                WHERE table_schema = 'main'
+                  AND table_name = 'advisory_state_snapshot'
+            """).fetchone()[0]
+
+            if snapshot_exists > 0:
+                # Count transitions: records that have both a previous and current version
+                state_changes = conn.execute("""
+                    WITH current_run_records AS (
+                        SELECT advisory_id
+                        FROM main.advisory_state_snapshot
+                        WHERE dbt_valid_from >= (
+                            SELECT max(started_at)
+                            FROM pipeline_runs
+                            WHERE run_id = ?
+                        )
+                    ),
+                    has_history AS (
+                        SELECT DISTINCT curr.advisory_id
+                        FROM current_run_records curr
+                        WHERE EXISTS (
+                            SELECT 1
+                            FROM main.advisory_state_snapshot prev
+                            WHERE prev.advisory_id = curr.advisory_id
+                              AND prev.dbt_valid_to IS NOT NULL
+                        )
+                    )
+                    SELECT count(*) FROM has_history
+                """, [metrics.run_id]).fetchone()[0]
+
+                metrics.state_changes = state_changes
+
+        except Exception as e:
+            logger.warning(f"Could not calculate state changes from snapshot: {e}")
+            metrics.state_changes = 0
 
 
 def main():

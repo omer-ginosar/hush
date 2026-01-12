@@ -9,7 +9,8 @@ cleaned as (
     select
         observation_id,
         upper(trim(cve_id)) as cve_id,
-        lower(trim(package_name)) as package_name,
+        -- Allow NULL package_name for CVE-only overrides (e.g., NVD-only CVEs)
+        nullif(lower(trim(package_name)), '') as package_name,
         observed_at,
         source_updated_at,
         raw_payload,
@@ -18,8 +19,9 @@ cleaned as (
         run_id
 
     from source
+    -- Only require CVE ID, package_name is optional
     where cve_id is not null
-      and package_name is not null
+      and trim(cve_id) != ''
 )
 
 select * from cleaned

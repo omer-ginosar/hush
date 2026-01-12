@@ -39,3 +39,8 @@ models:
 seeds:
   advisory_pipeline:
     +schema: seeds
+
+snapshots:
+  advisory_pipeline:
+    +target_schema: main
+    +strategy: check
