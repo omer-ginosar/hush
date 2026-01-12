@@ -53,6 +53,20 @@ def clean_demo_environment():
         shutil.rmtree(output_dir)
         print("  Removed output directory")
 
+    # Clean demo CVE from CSV (CVE-2008-4677 added by demo in Run 2)
+    csv_path = Path("../advisory_not_applicable.csv")
+    if csv_path.exists():
+        with open(csv_path, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            rows = [row for row in reader if row.get("cve_id") != "CVE-2008-4677"]
+
+        with open(csv_path, "w", newline="") as f:
+            if rows:
+                writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
+        print("  Cleaned demo CVE from CSV")
+
 
 def setup_mock_data():
     """
