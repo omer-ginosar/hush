@@ -4,7 +4,7 @@ State machine for validating advisory state transitions.
 Ensures that state changes follow allowed transition paths and
 prevents invalid regressions (e.g., fixed -> pending_upstream).
 """
-from typing import Set, Dict, Optional, List
+from typing import Set, Dict, Optional, List, Any
 from enum import Enum
 import logging
 
@@ -152,7 +152,7 @@ class AdvisoryStateMachine:
         self,
         current_state: Optional[str],
         new_state: str
-    ) -> Dict[str, any]:
+    ) -> Dict[str, Any]:
         """
         Describe a state transition with metadata.
 
