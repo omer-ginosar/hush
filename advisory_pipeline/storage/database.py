@@ -80,6 +80,8 @@ class Database:
                 observed_at TIMESTAMP,
                 raw_payload JSON,
                 status VARCHAR,
+                fix_available BOOLEAN,
+                fixed_version VARCHAR,
                 cvss_score DOUBLE,
                 notes VARCHAR,
                 run_id VARCHAR
@@ -196,6 +198,14 @@ class Database:
             ON advisory_state_history(effective_from, effective_to)
         """)
 
+        self._ensure_columns(
+            "raw_echo_advisories",
+            {
+                "fix_available": "BOOLEAN",
+                "fixed_version": "VARCHAR",
+            },
+        )
+
     def get_current_run_id(self) -> str:
         """
         Generate a unique run ID for this pipeline execution.
@@ -213,3 +223,12 @@ class Database:
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
+
+    def _ensure_columns(self, table_name: str, columns: dict) -> None:
+        conn = self.connect()
+        existing = {
+            row[1] for row in conn.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+        }
+        for column_name, column_type in columns.items():
+            if column_name not in existing:
+                conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")

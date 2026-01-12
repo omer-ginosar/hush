@@ -59,8 +59,8 @@ class SourceLoader:
             conn.execute("""
                 INSERT INTO raw_echo_advisories
                 (observation_id, cve_id, package_name, observed_at, raw_payload,
-                 status, cvss_score, notes, run_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 status, fix_available, fixed_version, cvss_score, notes, run_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 obs.observation_id,
                 obs.cve_id,
@@ -68,6 +68,8 @@ class SourceLoader:
                 obs.observed_at,
                 json.dumps(obs.raw_payload),
                 obs.status,
+                obs.fix_available,
+                obs.fixed_version,
                 obs.cvss_score,
                 obs.notes,
                 run_id

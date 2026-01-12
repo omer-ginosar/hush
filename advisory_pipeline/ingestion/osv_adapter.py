@@ -96,13 +96,14 @@ class OsvAdapter(BaseAdapter):
         # Get package info
         package_info = affected.get("package", {})
         package_name = package_info.get("name")
+        ecosystem = package_info.get("ecosystem")
 
         if not cve_id and not package_name:
             self._log_validation_failure("missing cve and package", raw_record)
             return None
 
         obs_id = hashlib.md5(
-            f"{self.source_id}:{osv_id}:{package_name or 'none'}".encode()
+            f"{self.source_id}:{osv_id}:{ecosystem or 'none'}:{package_name or 'none'}".encode()
         ).hexdigest()[:16]
 
         # Extract fixed version from ranges
@@ -196,15 +197,35 @@ class OsvAdapter(BaseAdapter):
         return observations
 
     def _normalize_vuln(self, vuln: Dict[str, Any]) -> List[SourceObservation]:
-        observations: List[SourceObservation] = []
+        observations_by_key: Dict[tuple, SourceObservation] = {}
         affected_entries = vuln.get("affected") or [{}]
 
         for affected in affected_entries:
             obs = self.normalize(vuln, affected=affected)
-            if obs:
-                observations.append(obs)
+            if not obs:
+                continue
 
-        return observations
+            package_info = affected.get("package", {})
+            key = (
+                obs.package_name,
+                package_info.get("ecosystem"),
+            )
+
+            existing = observations_by_key.get(key)
+            if existing:
+                if obs.fix_available and not existing.fix_available:
+                    existing.fix_available = True
+                if not existing.fixed_version and obs.fixed_version:
+                    existing.fixed_version = obs.fixed_version
+                if obs.references:
+                    existing.references = list({*(existing.references or []), *obs.references})
+                if not existing.notes and obs.notes:
+                    existing.notes = obs.notes
+                continue
+
+            observations_by_key[key] = obs
+
+        return list(observations_by_key.values())
 
     def _cache_expired(self, zip_path: Path) -> bool:
         if not zip_path.exists():
