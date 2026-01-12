@@ -52,7 +52,7 @@ advisory_pipeline/
 ├── component_name/
 │   ├── __init__.py          # Clean exports only
 │   ├── core_module.py       # Main implementation
-│   ├── README.md            # Component documentation
+│   ├── readme.md            # Component documentation
 │   └── examples/            # Usage examples (if needed)
 └── tests/
     └── test_component.py    # Comprehensive tests
@@ -451,7 +451,7 @@ except Exception as e:
 
 ### Updating Implementation Status
 
-After completing a phase, update [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md):
+After completing a phase, update [implementation-status.md](../implementation-status.md):
 
 ```markdown
 ### ✅ Phase N: Component Name (COMPLETE)
@@ -616,8 +616,8 @@ print(f'Fetched {len(obs)} observations')
 
 ### When Starting a New Phase
 
-1. Read [docs/PROTOTYPE_IMPLEMENTATION_PLAN.md](docs/PROTOTYPE_IMPLEMENTATION_PLAN.md) for phase spec
-2. Check [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for completed phases
+1. Read [prototype-implementation-plan.md](../prototype-implementation-plan.md) for phase spec
+2. Check [implementation-status.md](../implementation-status.md) for completed phases
 3. Create feature branch: `git checkout -b feature/phase-N-name`
 4. Implement minimal scope (avoid gold-plating)
 5. Write tests before marking complete
@@ -641,6 +641,6 @@ print(f'Fetched {len(obs)} observations')
 
 ---
 
-**For Human Reviewers**: See [README.md](README.md) for user-facing documentation
-**For Implementation Plan**: See [docs/PROTOTYPE_IMPLEMENTATION_PLAN.md](docs/PROTOTYPE_IMPLEMENTATION_PLAN.md)
-**For Current Status**: See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md)
+**For Human Reviewers**: See [readme.md](../../readme.md) for user-facing documentation
+**For Implementation Plan**: See [prototype-implementation-plan.md](../prototype-implementation-plan.md)
+**For Current Status**: See [implementation-status.md](../implementation-status.md)

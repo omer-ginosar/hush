@@ -30,7 +30,7 @@ Building a production-like CVE advisory enrichment pipeline for Echo's Data Engi
   - State classifications (final vs non-final)
   - Explanation templates
 - ✓ Updated `.gitignore` for pipeline artifacts
-- ✓ Comprehensive `README.md` with setup instructions
+- ✓ Comprehensive `readme.md` with setup instructions
 
 **Key Design Decisions**:
 1. **DuckDB over SQLite**: Better dbt support, more powerful SQL
@@ -39,14 +39,14 @@ Building a production-like CVE advisory enrichment pipeline for Echo's Data Engi
 4. **Clear Interfaces**: Documented inputs/outputs for subsequent phases
 
 **Assumptions**:
-- Data files (`data.json`, `advisory_not_applicable.csv`) exist in project root
+- Data files (`data/data.json`, `data/advisory-not-applicable.csv`) exist in the repo data folder
 - Python 3.11+ environment
 - Single-machine deployment (no distributed processing)
 
 **Directory Structure**:
 ```
 advisory_pipeline/
-├── README.md
+├── readme.md
 ├── requirements.txt
 ├── config.yaml
 ├── ingestion/
@@ -214,7 +214,7 @@ advisory_pipeline/
 - ✓ State machine (`state_machine.py`) - Transition validation
 - ✓ Explanation generator (`explainer.py`) - Template-based explanations
 - ✓ Comprehensive test suite (45 tests, all passing)
-- ✓ Documentation (`decisioning/README.md`)
+- ✓ Documentation (`decisioning/readme.md`)
 
 **Key Design Decisions**:
 1. Priority-ordered rule chain (first-match-wins)
@@ -249,7 +249,7 @@ Total: 45 tests, 45 passed
 - ✓ QualityChecker (`quality_checks.py`) - 6 SQL-based quality checks
 - ✓ RunReporter (`reporter.py`) - Markdown report generation
 - ✓ Test suite (8 tests, all passing)
-- ✓ Documentation (`observability/README.md`)
+- ✓ Documentation (`observability/readme.md`)
 
 **Key Design Decisions**:
 1. SQL-based quality checks for performance
@@ -287,7 +287,7 @@ Total: 8 tests, 8 passed
 **Deliverables**:
 - ✓ Main pipeline orchestrator (`run_pipeline.py`) - 389 lines
 - ✓ Multi-run demonstration script (`demo.py`) - 388 lines
-- ✓ Comprehensive documentation (`PHASE7_README.md`) - 383 lines
+- ✓ Comprehensive documentation (`PHASE7_readme.md`) - 383 lines
 - ✓ Implementation summary (`docs/PHASE7_IMPLEMENTATION_SUMMARY.md`)
 
 **Key Design Decisions**:
@@ -316,7 +316,7 @@ Total: 8 tests, 8 passed
 - Input: `config.yaml` + source data files
 - Output:
   - `output/advisory_current.json` (current advisory states)
-  - `output/run_report_*.md` (execution reports)
+  - `output/run-report-*.md` (execution reports)
   - `advisory_pipeline.duckdb` (full state history)
 
 **Integration Points**:
@@ -346,7 +346,7 @@ Total: 8 tests, 8 passed
 - ✓ State icons and formatted output
 - ✓ SCD2 history table display
 - ✓ Multiple source entry display (NVD-only vs package-specific)
-- ✓ Enhanced documentation (`DEMO.md`)
+- ✓ Enhanced documentation (`demo.md`)
 
 **Key Design Decisions**:
 1. Visual journey tracker shows CVE state progression
@@ -359,7 +359,7 @@ Total: 8 tests, 8 passed
 - Duplicate CVE entries (one per source)
 - State change detection broken (no SCD2 to compare against)
 
-**See**: [DEMO.md](../advisory_pipeline/DEMO.md)
+**See**: [demo.md](../advisory_pipeline/demo.md)
 
 **Next Phase**: Phase 9 - Comprehensive Testing
 
@@ -374,7 +374,7 @@ Total: 8 tests, 8 passed
 - ✓ Test infrastructure (`conftest.py`) with shared fixtures
 - ✓ Integration tests (`test_conflict_resolution.py`) - 13 tests
 - ✓ Integration tests (`test_integration.py`) - 9 tests
-- ✓ Testing documentation (`tests/README.md`)
+- ✓ Testing documentation (`tests/readme.md`)
 - ✓ All 67 tests passing
 
 **Key Design Decisions**:
@@ -405,7 +405,7 @@ test_integration.py: 9 tests
 - Input: Test fixtures from `conftest.py`
 - Output: Validated integration behavior
 
-**See**: [tests/README.md](../advisory_pipeline/tests/README.md), [tests/PHASE9_DELIVERABLES.md](../advisory_pipeline/tests/PHASE9_DELIVERABLES.md)
+**See**: [tests/readme.md](../advisory_pipeline/tests/readme.md), [tests/phase-9-deliverables.md](../advisory_pipeline/tests/phase-9-deliverables.md)
 
 **Next Phase**: Phase 10 - Documentation
 
@@ -417,14 +417,14 @@ test_integration.py: 9 tests
 **Branch**: `feature/phase10-readme`
 
 **Deliverables**:
-- ✓ Root-level README (`README.md`) - Human-facing project overview
-- ✓ Development guide (`DEVELOPMENT.md`) - Agent-facing extension reference
-- ✓ Updated technical README (`advisory_pipeline/README.md`)
+- ✓ Root-level README (`readme.md`) - Human-facing project overview
+- ✓ Development guide (`docs/phase-11/development.md`) - Agent-facing extension reference
+- ✓ Updated technical README (`advisory_pipeline/readme.md`)
 - ✓ Clear documentation hierarchy (user → developer → agent)
 - ✓ Updated implementation status (this file)
 
 **Key Design Decisions**:
-1. **Three-tier docs**: Users (README) → Developers (DEVELOPMENT) → Agents (component docs)
+1. **Three-tier docs**: Users (readme) → Developers (development) → Agents (component docs)
 2. **No Repetition**: Each doc has clear purpose, minimal overlap
 3. **Actionable**: Quick starts, examples, troubleshooting
 4. **Maintainable**: Component READMEs stay with code
@@ -432,20 +432,20 @@ test_integration.py: 9 tests
 
 **Documentation Structure**:
 ```
-README.md                  # Quick start, architecture, key features
-DEVELOPMENT.md             # Extension guide, patterns, workflows
+readme.md                  # Quick start, architecture, key features
+docs/phase-11/development.md  # Extension guide, patterns, workflows
 advisory_pipeline/
-  README.md                # Technical reference, API contracts
-  [component]/README.md    # Component-specific details
+  readme.md                # Technical reference, API contracts
+  [component]/readme.md    # Component-specific details
 docs/
-  IMPLEMENTATION_STATUS.md # This file - phase history
-  PROTOTYPE_IMPLEMENTATION_PLAN.md  # Original spec
+  implementation-status.md # This file - phase history
+  prototype-implementation-plan.md  # Original spec
 ```
 
 **Distinction:**
-- **Human context**: README.md focuses on "what" and "why" for reviewers
-- **Agent context**: DEVELOPMENT.md focuses on "how" and "where" for extension
-- **Technical reference**: advisory_pipeline/README.md for API contracts
+- **Human context**: readme.md focuses on "what" and "why" for reviewers
+- **Agent context**: docs/phase-11/development.md focuses on "how" and "where" for extension
+- **Technical reference**: advisory_pipeline/readme.md for API contracts
 
 **Interface Contract**:
 - Input: Existing codebase and component docs
@@ -528,11 +528,11 @@ Phase 9 (Tests) ← Phase 10 (Documentation)
 
 **Prerequisites**:
 - Phase 1 complete (directory structure, config exist)
-- Files available: `../data.json`, `../advisory_not_applicable.csv`
+- Files available: `../data/data.json`, `../data/advisory-not-applicable.csv`
 
 **Inputs**:
 - `config.yaml` source definitions
-- Implementation plan in `PROTOTYPE_IMPLEMENTATION_PLAN.md` lines 206-851
+- Implementation plan in `prototype-implementation-plan.md` lines 206-851
 
 **Outputs Expected**:
 - `ingestion/base_adapter.py` with `BaseAdapter` and `SourceObservation`

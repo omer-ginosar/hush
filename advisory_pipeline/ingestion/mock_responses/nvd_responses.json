@@ -2,12 +2,12 @@
   "vulnerabilities": [
     {
       "cve": {
-        "id": "CVE-2024-0001",
+        "id": "CVE-2020-10735",
         "vulnStatus": "Analyzed",
         "descriptions": [
           {
             "lang": "en",
-            "value": "Buffer overflow in example package"
+            "value": "Integer overflow in Python string-to-integer conversion"
           }
         ],
         "metrics": {
@@ -22,19 +22,19 @@
         },
         "references": [
           {
-            "url": "https://example.com/advisory/1"
+            "url": "https://python.org/advisory/CVE-2020-10735"
           }
         ]
       }
     },
     {
       "cve": {
-        "id": "CVE-2024-0002",
+        "id": "CVE-2023-37920",
         "vulnStatus": "Analyzed",
         "descriptions": [
           {
             "lang": "en",
-            "value": "Information disclosure"
+            "value": "Certifi certificate trust store issue"
           }
         ],
         "metrics": {
@@ -52,12 +52,12 @@
     },
     {
       "cve": {
-        "id": "CVE-2024-0003",
+        "id": "CVE-2008-4677",
         "vulnStatus": "Analyzed",
         "descriptions": [
           {
             "lang": "en",
-            "value": "SQL injection vulnerability"
+            "value": "Vim arbitrary command execution"
           }
         ],
         "metrics": {
@@ -72,7 +72,7 @@
         },
         "references": [
           {
-            "url": "https://example.com/advisory/3"
+            "url": "https://www.vim.org/security/"
           }
         ]
       }

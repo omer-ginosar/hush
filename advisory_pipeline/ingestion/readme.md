@@ -152,12 +152,12 @@ Adapters are configured via `config.yaml`:
 sources:
   echo_data:
     type: "json"
-    cache_path: "../data.json"
+    cache_path: "../data/data.json"
     url: null  # Optional remote URL
 
   echo_csv:
     type: "csv"
-    path: "../advisory_not_applicable.csv"
+    path: "../data/advisory-not-applicable.csv"
 
   nvd:
     type: "api"

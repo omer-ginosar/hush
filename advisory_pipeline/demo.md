@@ -129,7 +129,7 @@ The demo tracks 3 mock CVEs through realistic scenarios:
 ## Granularity Architecture Fix
 
 ### Single Package-Level Granularity
-After applying the architecture fix from [ARCHITECTURE_ISSUE_GRANULARITY.md](ARCHITECTURE_ISSUE_GRANULARITY.md):
+After applying the granularity fix:
 
 - **Before**: 40,195 advisories (included duplicate CVE-only entries)
 - **After**: 40,192 advisories (3 fewer - CVE-only duplicates removed)
@@ -149,7 +149,7 @@ After applying the architecture fix from [ARCHITECTURE_ISSUE_GRANULARITY.md](ARC
 
 After running the demo, check:
 - `output/advisory_current.json` - Current state of all advisories (40k+ entries)
-- `output/run_report_*.md` - Markdown reports for each run
+- `output/run-report-*.md` - Markdown reports for each run
 - `advisory_pipeline.duckdb` - Full database with all history
 
 ## For Reviewers

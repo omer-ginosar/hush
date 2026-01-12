@@ -17,7 +17,7 @@ Build a production-like CVE advisory enrichment pipeline that:
 
 ```
 advisory_pipeline/
-├── README.md
+├── readme.md
 ├── requirements.txt
 ├── config.yaml
 ├── run_pipeline.py              # Main orchestrator
@@ -2512,8 +2512,8 @@ class RunReporter:
     def save_report(self, report: str, output_dir: Path):
         """Save report to file."""
         output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        filepath = output_dir / f"run_report_{timestamp}.md"
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        filepath = output_dir / f"run-report-{timestamp}.md"
         filepath.write_text(report)
         return filepath
 ```
@@ -3048,7 +3048,7 @@ def main():
     print("=" * 60)
     print("\nOutputs:")
     print("  - output/advisory_current.json")
-    print("  - output/run_report_*.md (one per run)")
+    print("  - output/run-report-*.md (one per run)")
     print("  - advisory_pipeline.duckdb (full history)")
 
 if __name__ == "__main__":
@@ -3242,7 +3242,7 @@ def test_no_change_no_new_record(scd2):
 
 ## Phase 10: README
 
-### Step 10.1: README.md
+### Step 10.1: readme.md
 
 ```markdown
 # CVE Advisory Pipeline Prototype
@@ -3318,7 +3318,7 @@ python demo.py
 After running `demo.py`:
 
 - `output/advisory_current.json` - Current advisory state with explanations
-- `output/run_report_*.md` - Human-readable run reports
+- `output/run-report-*.md` - Human-readable run reports
 - `advisory_pipeline.duckdb` - Full state history (SCD2)
 
 ## Project Structure

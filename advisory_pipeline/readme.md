@@ -17,7 +17,7 @@ pytest tests/ -v
 
 **Outputs:**
 - `output/advisory_current.json` - Current advisory states
-- `output/run_report_*.md` - Execution metrics
+- `output/run-report-*.md` - Execution metrics
 - `advisory_pipeline.duckdb` - State history database
 
 ## Architecture
@@ -49,7 +49,7 @@ Adapters for each data source implementing `BaseAdapter` interface.
 
 **Output:** Normalized `SourceObservation` objects
 
-**See:** [ingestion/README.md](ingestion/README.md)
+**See:** [ingestion/readme.md](ingestion/readme.md)
 
 ### Storage ([storage/](storage/))
 
@@ -91,7 +91,7 @@ SQL-based data transformations.
 **Important**: Use `mart_advisory_current_by_cve` for reporting/dashboards (one row per CVE).
 Use `mart_advisory_current` for detailed analyst triage (package-level granularity).
 
-**See:** [dbt_project/README.md](dbt_project/README.md)
+**See:** [dbt_project/readme.md](dbt_project/readme.md)
 
 ### Decisioning ([decisioning/](decisioning/))
 
@@ -110,7 +110,7 @@ Rule-based decision engine with explainability.
 - **R5** Under Investigation → `under_investigation`
 - **R6** Pending Upstream → `pending_upstream`
 
-**See:** [decisioning/README.md](decisioning/README.md)
+**See:** [decisioning/readme.md](decisioning/readme.md)
 
 ### Observability ([observability/](observability/))
 
@@ -128,7 +128,7 @@ Metrics collection and quality validation.
 - `cve_format` - Valid CVE ID format
 - `stalled_cves` - Detect stale states
 
-**See:** [observability/README.md](observability/README.md)
+**See:** [observability/readme.md](observability/readme.md)
 
 ## Configuration
 
@@ -141,10 +141,10 @@ database:
 sources:
   echo_data:
     type: "json"
-    cache_path: "../data.json"  # Adjust path as needed
+    cache_path: "../data/data.json"  # Adjust path as needed
 
   echo_csv:
-    path: "../advisory_not_applicable.csv"
+    path: "../data/advisory-not-applicable.csv"
 
   nvd:
     type: "api"
@@ -207,7 +207,7 @@ pytest tests/ --cov=advisory_pipeline --cov-report=html
 pytest tests/test_integration.py tests/test_conflict_resolution.py -v
 ```
 
-**See:** [tests/README.md](tests/README.md)
+**See:** [tests/readme.md](tests/readme.md)
 
 ## Data Models
 
@@ -276,7 +276,7 @@ class Decision:
 3. Add to `run_all_checks()` method
 4. Add test in `tests/test_observability.py`
 
-**See:** [DEVELOPMENT.md](../DEVELOPMENT.md) for detailed extension guide
+**See:** [development.md](../docs/phase-11/development.md) for detailed extension guide
 
 ## Pipeline Execution
 
@@ -305,7 +305,7 @@ Multi-run demonstration with visual CVE journey tracking.
 - SCD2 history table display
 - State distribution metrics
 
-**See:** [DEMO.md](DEMO.md)
+**See:** [demo.md](demo.md)
 
 ## State Change Tracking (SCD2)
 
@@ -345,7 +345,7 @@ WHERE advisory_id = 'pkg:CVE-2024-0001'
 4. **Single Environment**: No dev/staging/prod configs
 5. **SCD2 Population**: Currently bypassed (dbt writes directly to marts)
 
-**See:** [docs/IMPLEMENTATION_STATUS.md](../docs/IMPLEMENTATION_STATUS.md) for technical debt
+**See:** [docs/implementation-status.md](../docs/implementation-status.md) for technical debt
 
 ## Dependencies
 
@@ -375,7 +375,7 @@ Phased development approach:
 - **Phase 9**: Test suite
 - **Phase 10**: Documentation (this phase)
 
-**Full history:** [docs/IMPLEMENTATION_STATUS.md](../docs/IMPLEMENTATION_STATUS.md)
+**Full history:** [docs/implementation-status.md](../docs/implementation-status.md)
 
 ## Interface Contracts
 
@@ -416,8 +416,8 @@ dbt run --select stg_echo_advisories
 
 ```bash
 # Check data files exist
-ls -lh ../data.json
-ls -lh ../advisory_not_applicable.csv
+ls -lh ../data/data.json
+ls -lh ../data/advisory-not-applicable.csv
 
 # Test adapter directly
 python3 -c "from ingestion import EchoDataAdapter; ..."
@@ -437,6 +437,6 @@ Known issue - pipeline doesn't populate `advisory_state_history`. State changes 
 
 ---
 
-**For Users:** See [../README.md](../README.md) for quick start
-**For Developers:** See [../DEVELOPMENT.md](../DEVELOPMENT.md) for extension guide
-**For Status:** See [../docs/IMPLEMENTATION_STATUS.md](../docs/IMPLEMENTATION_STATUS.md)
+**For Users:** See [../readme.md](../readme.md) for quick start
+**For Developers:** See [../docs/phase-11/development.md](../docs/phase-11/development.md) for extension guide
+**For Status:** See [../docs/implementation-status.md](../docs/implementation-status.md)

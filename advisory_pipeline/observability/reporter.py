@@ -130,7 +130,7 @@ class RunReporter:
             Path to saved report file
         """
         output_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        filepath = output_dir / f"run_report_{timestamp}.md"
+        timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        filepath = output_dir / f"run-report-{timestamp}.md"
         filepath.write_text(report)
         return filepath

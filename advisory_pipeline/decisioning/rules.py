@@ -208,7 +208,7 @@ def get_default_rules() -> List[Rule]:
     First rule that matches determines the final state.
 
     To add a new rule:
-    1. Create a class extending Rule (see EXTENDING.md)
+    1. Create a class extending Rule (see extending.md)
     2. Add instance here with appropriate priority
     3. Add tests in tests/test_decisioning_rules.py
 
@@ -268,7 +268,7 @@ def get_default_rules() -> List[Rule]:
 #         )
 #
 # Then add to get_default_rules() above with appropriate priority.
-# See EXTENDING.md for full guide with examples.
+# See extending.md for full guide with examples.
 # ==============================================================================
 
 

@@ -54,7 +54,7 @@ def clean_demo_environment():
         print("  Removed output directory")
 
     # Clean demo CVE from CSV (CVE-2008-4677 added by demo in Run 2)
-    csv_path = Path("../advisory_not_applicable.csv")
+    csv_path = Path("../data/advisory-not-applicable.csv")
     if csv_path.exists():
         with open(csv_path, "r", newline="") as f:
             reader = csv.DictReader(f)
@@ -212,7 +212,7 @@ def create_csv_override(include_override: bool = False):
     - Run 2: CVE-2008-4677 ADDED to CSV → shows as not_applicable (analyst override)
     - Run 3: CVE-2008-4677 stays in CSV → remains not_applicable
     """
-    csv_path = Path("../advisory_not_applicable.csv")
+    csv_path = Path("../data/advisory-not-applicable.csv")
 
     # Read existing CSV (don't modify it)
     existing_overrides = []
@@ -511,7 +511,7 @@ def run_demo():
     print("DEMO COMPLETE")
     print("=" * 70)
     print(f"\nTotal advisories processed: {metrics3.advisories_total}")
-    print(f"Output files: output/advisory_current.json, output/run_report_*.md")
+    print(f"Output files: output/advisory_current.json, output/run-report-*.md")
     print("=" * 70 + "\n")
 
 

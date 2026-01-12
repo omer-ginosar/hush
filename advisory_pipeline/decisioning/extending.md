@@ -583,5 +583,5 @@ R6 (6): Pending Upstream      - Default fallback
 
 See:
 - [rules.py](rules.py) - Existing rule implementations
-- [README.md](README.md) - Architecture overview
+- [readme.md](readme.md) - Architecture overview
 - [../tests/test_decisioning_rules.py](../tests/test_decisioning_rules.py) - Test examples

@@ -218,13 +218,13 @@ def evaluate(self, advisory_data):
 - [ ] Write tests
 - [ ] Run tests: `pytest tests/test_decisioning_rules.py -v`
 - [ ] Update config.yaml (explanation template)
-- [ ] Document in EXTENDING.md
+- [ ] Document in extending.md
 
 ---
 
 ## Need More Details?
 
 See:
-- [EXTENDING.md](EXTENDING.md) - Full guide with examples
+- [extending.md](extending.md) - Full guide with examples
 - [rules.py](rules.py) - Template at bottom of file
 - [examples/add_distro_rule.py](examples/add_distro_rule.py) - Working example

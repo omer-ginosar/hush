@@ -19,9 +19,10 @@ This pipeline ingests security advisories from multiple sources (Echo's internal
 ### Prerequisites
 
 - Python 3.11+
-- Input data files in project root:
-  - `data.json` (Echo advisory corpus)
-  - `advisory_not_applicable.csv` (analyst overrides)
+- Input data files in `data/`:
+  - `data/data.json` (Echo advisory corpus)
+  - `data/advisory-not-applicable.csv` (analyst overrides)
+  - `data/data-sample.json` (optional sample subset)
 
 ### Installation
 
@@ -53,7 +54,7 @@ export NVD_API_KEY="your-key"
 ### Outputs
 
 - `output/advisory_current.json` - Current state of all advisories
-- `output/run_report_*.md` - Execution metrics and quality checks
+- `output/run-report-*.md` - Execution metrics and quality checks
 - `advisory_pipeline.duckdb` - Full state history database
 
 ## Architecture
@@ -123,16 +124,16 @@ pytest tests/test_integration.py tests/test_conflict_resolution.py -v
 - 45+ unit tests (adapters, rules, state machine, explainer)
 - Test fixtures and mocks for isolated testing
 
-See [advisory_pipeline/tests/README.md](advisory_pipeline/tests/README.md) for details.
+See [advisory_pipeline/tests/readme.md](advisory_pipeline/tests/readme.md) for details.
 
 ## Project Structure
 
 ```
 hush/
-├── README.md                           # This file
-├── DEVELOPMENT.md                      # Developer/agent guide
+├── readme.md                           # This file
+├── data/                               # Input datasets (local)
 ├── advisory_pipeline/
-│   ├── README.md                       # Technical documentation
+│   ├── readme.md                       # Technical documentation
 │   ├── config.yaml                     # Pipeline configuration
 │   ├── run_pipeline.py                 # Main orchestrator
 │   ├── demo.py                         # Visual demonstration
@@ -144,29 +145,38 @@ hush/
 │   ├── tests/                          # Test suite
 │   └── output/                         # Generated reports
 └── docs/
-    ├── PROTOTYPE_IMPLEMENTATION_PLAN.md
-    ├── IMPLEMENTATION_STATUS.md
-    └── [phase handoff documents]
+    ├── assets/                          # Design artifacts
+    ├── phase-11/                        # Phase handoff docs
+    ├── implementation-status.md
+    ├── prototype-implementation-plan.md
+    └── raw-design.md
 ```
 
 ## Documentation
 
+### Docs Index
+- [docs/implementation-status.md](docs/implementation-status.md) - Phase completion status
+- [docs/prototype-implementation-plan.md](docs/prototype-implementation-plan.md) - Original plan
+- [docs/raw-design.md](docs/raw-design.md) - Design discussions
+- [docs/phase-11/](docs/phase-11) - Phase handoff artifacts
+- [docs/assets/](docs/assets) - Design diagrams and source files
+
 ### For Users
 - [Quick Start](#quick-start) (this file)
-- [DEMO.md](advisory_pipeline/DEMO.md) - Visual demonstration guide
+- [demo.md](advisory_pipeline/demo.md) - Visual demonstration guide
 
 ### For Developers
-- [DEVELOPMENT.md](DEVELOPMENT.md) - Development workflow and conventions
-- [advisory_pipeline/README.md](advisory_pipeline/README.md) - Technical reference
-- [Tests README](advisory_pipeline/tests/README.md) - Testing guide
+- [docs/phase-11/development.md](docs/phase-11/development.md) - Development workflow and conventions
+- [advisory_pipeline/readme.md](advisory_pipeline/readme.md) - Technical reference
+- [Tests README](advisory_pipeline/tests/readme.md) - Testing guide
 
 ### For Agents
-- [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) - Phase completion status
+- [docs/implementation-status.md](docs/implementation-status.md) - Phase completion status
 - Component READMEs in each module directory
 
 ### Architecture & Design
-- [docs/PROTOTYPE_IMPLEMENTATION_PLAN.md](docs/PROTOTYPE_IMPLEMENTATION_PLAN.md) - Original plan
-- [docs/Raw Design.md](docs/Raw Design.md) - Design discussions
+- [docs/prototype-implementation-plan.md](docs/prototype-implementation-plan.md) - Original plan
+- [docs/raw-design.md](docs/raw-design.md) - Design discussions
 
 ## Configuration
 
@@ -184,7 +194,7 @@ Pipeline behavior is controlled via [advisory_pipeline/config.yaml](advisory_pip
 3. **Incremental Processing**: NVD uses time windows but no persisted checkpoints
 4. **Sequential Processing**: No parallelization of source fetching
 
-See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for technical debt tracking.
+See [docs/implementation-status.md](docs/implementation-status.md) for technical debt tracking.
 
 ## Contributing
 
