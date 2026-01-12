@@ -17,11 +17,33 @@ sources:
     path: "../advisory_not_applicable.csv"
 
   nvd:
-    type: "mock"
+    type: "api"
+    base_url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    api_key_env: "NVD_API_KEY"
+    days_back: 30
+    last_mod_start: null
+    last_mod_end: null
+    results_per_page: 2000
+    max_records: 5000  # Safety cap for prototype runs
+    rate_limit_per_minute: 300
+    rate_limit_burst: 10
+    timeout_seconds: 30
+    max_retries: 5
+    use_mock: false
     mock_file: "ingestion/mock_responses/nvd_responses.json"
 
   osv:
-    type: "mock"
+    type: "api"
+    data_dump_url: "https://osv-vulnerabilities.storage.googleapis.com/all.zip"
+    cache_dir: "ingestion/cache/osv"
+    cache_ttl_hours: 24
+    ecosystems: []  # Optional filter (e.g., ["PyPI", "npm"])
+    days_back: 30
+    modified_since: null
+    max_records: 5000  # Safety cap for prototype runs
+    timeout_seconds: 60
+    max_retries: 5
+    use_mock: false
     mock_file: "ingestion/mock_responses/osv_responses.json"
 
 rules:

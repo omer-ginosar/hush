@@ -13,6 +13,7 @@ advisory_pipeline/*.duckdb
 advisory_pipeline/*.duckdb.wal
 advisory_pipeline/output/*
 !advisory_pipeline/output/.gitkeep
+advisory_pipeline/ingestion/cache/
 
 # dbt artifacts
 advisory_pipeline/dbt_project/target/

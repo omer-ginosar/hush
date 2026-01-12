@@ -27,6 +27,7 @@ import sys
 import json
 import shutil
 import csv
+import yaml
 from pathlib import Path
 from datetime import datetime
 
@@ -178,6 +179,31 @@ def setup_mock_data():
         json.dump(osv_data_initial, f, indent=2)
 
     print("Created mock API response files")
+
+
+def build_demo_config() -> Path:
+    """Create a demo-specific config that forces mock adapters."""
+    config_path = Path("config.yaml")
+    if not config_path.exists():
+        raise FileNotFoundError("config.yaml not found for demo")
+
+    with open(config_path, "r") as handle:
+        config = yaml.safe_load(handle)
+
+    config.setdefault("sources", {})
+    config["sources"].setdefault("nvd", {})
+    config["sources"].setdefault("osv", {})
+    config["sources"]["nvd"]["use_mock"] = True
+    config["sources"]["osv"]["use_mock"] = True
+
+    output_dir = Path("output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    demo_config_path = output_dir / "demo_config.yaml"
+
+    with open(demo_config_path, "w") as handle:
+        yaml.safe_dump(config, handle, sort_keys=False)
+
+    return demo_config_path
 
 
 def create_csv_override(include_override: bool = False):
@@ -420,6 +446,7 @@ def run_demo():
     # Setup
     clean_demo_environment()
     setup_mock_data()
+    demo_config = build_demo_config()
 
     # === RUN 1: Initial Load ===
     print("\n" + "=" * 70)
@@ -429,7 +456,7 @@ def run_demo():
 
     create_csv_override(include_override=False)
 
-    pipeline = AdvisoryPipeline()
+    pipeline = AdvisoryPipeline(str(demo_config))
     metrics1 = pipeline.run()
     pipeline.db.close()
 
@@ -449,7 +476,7 @@ def run_demo():
 
     create_csv_override(include_override=True)
 
-    pipeline2 = AdvisoryPipeline()
+    pipeline2 = AdvisoryPipeline(str(demo_config))
     metrics2 = pipeline2.run()
     pipeline2.db.close()
 
@@ -469,7 +496,7 @@ def run_demo():
 
     update_osv_with_new_fix()
 
-    pipeline3 = AdvisoryPipeline()
+    pipeline3 = AdvisoryPipeline(str(demo_config))
     metrics3 = pipeline3.run()
     pipeline3.db.close()
 

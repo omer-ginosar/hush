@@ -44,8 +44,8 @@ Adapters for each data source implementing `BaseAdapter` interface.
 **Available Adapters:**
 - `EchoDataAdapter` - Parse data.json (40k+ advisories)
 - `EchoCsvAdapter` - Parse CSV overrides (analyst decisions)
-- `NvdAdapter` - NVD vulnerability data (mock)
-- `OsvAdapter` - OSV vulnerability data (mock)
+- `NvdAdapter` - NVD vulnerability data (live API, optional mock)
+- `OsvAdapter` - OSV vulnerability data (data dump, optional mock)
 
 **Output:** Normalized `SourceObservation` objects
 
@@ -147,8 +147,23 @@ sources:
     path: "../advisory_not_applicable.csv"
 
   nvd:
-    type: "mock"
+    type: "api"
+    base_url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    api_key_env: "NVD_API_KEY"
+    days_back: 30
+    max_records: 5000
+    use_mock: false
     mock_file: "ingestion/mock_responses/nvd_responses.json"
+
+  osv:
+    type: "api"
+    data_dump_url: "https://osv-vulnerabilities.storage.googleapis.com/all.zip"
+    cache_dir: "ingestion/cache/osv"
+    cache_ttl_hours: 24
+    ecosystems: []
+    max_records: 5000
+    use_mock: false
+    mock_file: "ingestion/mock_responses/osv_responses.json"
 
 rules:
   - id: "R0"
@@ -164,6 +179,9 @@ states:
     - "pending_upstream"
     - "under_investigation"
 ```
+
+Set `NVD_API_KEY` in the environment for higher NVD rate limits. OSV data dump
+downloads are cached under `ingestion/cache/osv` by default.
 
 ## Testing
 
@@ -321,9 +339,9 @@ WHERE advisory_id = 'pkg:CVE-2024-0001'
 
 ## Known Limitations
 
-1. **Mock NVD/OSV**: Static fixtures, not real APIs
+1. **OSV Dump Size**: Full data dump with local cache; use filters or max limits for scale
 2. **Sequential Processing**: No parallelization
-3. **Full Refresh**: No incremental loads
+3. **Incremental Loads**: NVD supports time windows but no persisted checkpoints
 4. **Single Environment**: No dev/staging/prod configs
 5. **SCD2 Population**: Currently bypassed (dbt writes directly to marts)
 
@@ -337,7 +355,7 @@ From [requirements.txt](requirements.txt):
 dbt-duckdb>=1.7.0    # dbt with DuckDB adapter
 duckdb>=0.9.0        # Embedded analytical database
 pyyaml>=6.0          # Config parsing
-requests>=2.31.0     # HTTP client (future API use)
+requests>=2.31.0     # HTTP client for source APIs
 jinja2>=3.1.0        # Template rendering
 pytest>=7.4.0        # Testing framework
 tabulate>=0.9.0      # Report formatting

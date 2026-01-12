@@ -8,8 +8,8 @@ The ingestion layer provides a unified interface for fetching and normalizing da
 
 - **Echo data.json**: Base advisory corpus (40K+ advisories)
 - **Echo CSV**: Internal analyst overrides (1.9K+ entries)
-- **NVD**: National Vulnerability Database (mock)
-- **OSV**: Open Source Vulnerabilities (mock)
+- **NVD**: National Vulnerability Database (live API with optional mock)
+- **OSV**: Open Source Vulnerabilities (live data dump with optional mock)
 
 All adapters implement a common interface and produce normalized `SourceObservation` objects.
 
@@ -64,6 +64,13 @@ All adapters inherit from `BaseAdapter` and must implement:
 **SourceHealth**: Health status with:
 - is_healthy, last_fetch, records_fetched, error_message
 
+### Adapter Runtime Features
+
+- Rate limiting (token bucket per source)
+- Retry with exponential backoff + jitter on 429/5xx/timeouts
+- Circuit breaker (opens after repeated failures)
+- In-run request caching (dedupes identical fetches)
+
 ## Adapters
 
 ### EchoDataAdapter
@@ -99,21 +106,25 @@ CVE-2022-23491,python-certifi,not_applicable,2022.9.24-1,code_not_in_use
 
 ### NvdAdapter
 
-Simulates NVD API with mock responses.
+Fetches from the NVD 2.0 API with rate limiting, retries, and circuit breaking.
+Optional mock mode for tests and demos.
 
 **Features**:
-- Extracts CVSS v3.1 scores and vectors
-- Detects rejected CVEs
+- Extracts CVSS v3.1/v3.0/v2 scores and vectors
+- Detects rejected/disputed CVEs
+- Honors `lastModStartDate`/`lastModEndDate` or `days_back`
 - Package-agnostic (CVE-level only)
 
 ### OsvAdapter
 
-Simulates OSV API with mock responses.
+Loads OSV vulnerabilities from the public data dump (zip) with local caching.
+Optional mock mode for tests and demos.
 
 **Features**:
 - Maps OSV IDs to CVE IDs via aliases
 - Extracts fixed versions from range events
 - Handles multiple affected packages per vulnerability
+- Filters by ecosystem and modified date window (optional)
 
 ## Testing
 
@@ -123,7 +134,7 @@ cd advisory_pipeline
 python3 tests/test_adapters.py
 ```
 
-Expected output:
+Expected output (mock mode):
 ```
 ✓ EchoDataAdapter: Loaded 40,189 observations
 ✓ EchoCsvAdapter: Loaded 1,964 observations
@@ -149,46 +160,49 @@ sources:
     path: "../advisory_not_applicable.csv"
 
   nvd:
-    type: "mock"
+    type: "api"
+    base_url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+    api_key_env: "NVD_API_KEY"
+    days_back: 30
+    results_per_page: 2000
+    max_records: 5000
+    use_mock: false
     mock_file: "ingestion/mock_responses/nvd_responses.json"
 
   osv:
-    type: "mock"
+    type: "api"
+    data_dump_url: "https://osv-vulnerabilities.storage.googleapis.com/all.zip"
+    cache_dir: "ingestion/cache/osv"
+    cache_ttl_hours: 24
+    ecosystems: []
+    max_records: 5000
+    use_mock: false
     mock_file: "ingestion/mock_responses/osv_responses.json"
 ```
 
 ## Production Considerations
 
-### Mock to Real APIs
+### Live Source Notes
 
-To replace mock adapters with real API calls:
-
-1. Update `fetch()` method in `nvd_adapter.py` / `osv_adapter.py`
-2. Add API authentication (keys, tokens)
-3. Implement rate limiting and retry logic
-4. Add HTTP caching
-5. Keep `normalize()` method unchanged
+- **NVD** requires an API key (`NVD_API_KEY`) for higher rate limits.
+- **OSV** downloads the public data dump and caches it locally.
+- Set `use_mock: true` for offline tests or demos.
 
 ### Error Handling
 
 Current strategy: Fail-safe (errors captured in health status).
 
 For production:
-- Add exponential backoff retry
-- Implement circuit breakers
 - Add structured error types
 - Log errors to external monitoring
 
 ### Performance
 
-Current performance (single-threaded):
-- Echo data: ~1s for 40K observations
-- Total: ~2s for all sources
-
 For production:
 - Use `asyncio` for parallel fetching
 - Add connection pooling
 - Implement incremental updates
+- Use ecosystem filters and max record limits for OSV
 
 ## API Reference
 
