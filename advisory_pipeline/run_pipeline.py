@@ -93,6 +93,20 @@ class AdvisoryPipeline:
         self.quality_checker = QualityChecker(self.db)
         self.reporter = RunReporter()
 
+        # Validate required configuration keys
+        required_keys = ["database", "sources"]
+        for key in required_keys:
+            if key not in self.config:
+                raise ValueError(f"Missing required config key: {key}")
+
+        required_sources = ["echo_data", "echo_csv", "nvd", "osv"]
+        if "sources" not in self.config:
+            raise ValueError("Missing 'sources' section in config")
+
+        for source in required_sources:
+            if source not in self.config["sources"]:
+                raise ValueError(f"Missing required source configuration: sources.{source}")
+
         # Initialize source adapters
         self.adapters = {
             "echo_data": EchoDataAdapter(self.config["sources"]["echo_data"]),
@@ -247,7 +261,9 @@ class AdvisoryPipeline:
         Raises:
             RuntimeError: If dbt execution fails
         """
-        dbt_dir = Path("dbt_project")
+        # Use absolute path to dbt project directory
+        script_dir = Path(__file__).parent
+        dbt_dir = script_dir / "dbt_project"
         if not dbt_dir.exists():
             raise RuntimeError(f"dbt project directory not found: {dbt_dir}")
 
@@ -294,24 +310,45 @@ class AdvisoryPipeline:
         """
         conn = self.db.connect()
 
+        # Check if mart table exists before querying
+        table_check = conn.execute("""
+            SELECT count(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'main_marts'
+              AND table_name = 'mart_advisory_current'
+        """).fetchone()
+
+        if not table_check or table_check[0] == 0:
+            logger.warning("mart_advisory_current table not found - dbt may not have run successfully")
+            return {
+                "generated_at": datetime.utcnow().isoformat() + "Z",
+                "advisory_count": 0,
+                "advisories": [],
+                "warning": "dbt mart table not found"
+            }
+
         # Query current state from dbt mart
-        results = conn.execute("""
-            SELECT
-                advisory_id,
-                cve_id,
-                package_name,
-                state,
-                state_type,
-                fixed_version,
-                confidence,
-                explanation,
-                reason_code,
-                contributing_sources,
-                dissenting_sources,
-                decided_at,
-                run_id
-            FROM main_marts.mart_advisory_current
-        """).fetchall()
+        try:
+            results = conn.execute("""
+                SELECT
+                    advisory_id,
+                    cve_id,
+                    package_name,
+                    state,
+                    state_type,
+                    fixed_version,
+                    confidence,
+                    explanation,
+                    reason_code,
+                    contributing_sources,
+                    dissenting_sources,
+                    decided_at,
+                    run_id
+                FROM main_marts.mart_advisory_current
+            """).fetchall()
+        except Exception as e:
+            logger.error(f"Failed to query mart_advisory_current: {e}")
+            raise RuntimeError(f"Database query failed: {e}") from e
 
         # Convert to list of dictionaries
         columns = [desc[0] for desc in conn.description]
@@ -329,7 +366,11 @@ class AdvisoryPipeline:
                 if adv.get(json_field) and isinstance(adv[json_field], str):
                     try:
                         adv[json_field] = json.loads(adv[json_field])
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logger.warning(
+                            f"Failed to parse {json_field} for advisory {adv.get('advisory_id')}: {e}. "
+                            f"Raw value: {adv[json_field][:100]}"
+                        )
                         adv[json_field] = []
 
             advisories.append(adv)

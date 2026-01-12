@@ -6,9 +6,14 @@ with observations as (
 ),
 
 -- Get unique advisory identifiers (package:CVE combinations)
+-- Note: NVD observations have NULL package_name and are CVE-only
+-- To avoid collisions, we use CVE-only ID when package_name is NULL
 advisory_keys as (
     select distinct
-        coalesce(package_name, 'UNKNOWN') || ':' || cve_id as advisory_id,
+        case
+            when package_name is not null then package_name || ':' || cve_id
+            else cve_id  -- CVE-only advisory (from NVD)
+        end as advisory_id,
         cve_id,
         package_name
     from observations
@@ -18,7 +23,10 @@ advisory_keys as (
 -- Aggregate CSV overrides (highest priority)
 csv_overrides as (
     select
-        coalesce(package_name, 'UNKNOWN') || ':' || cve_id as advisory_id,
+        case
+            when package_name is not null then package_name || ':' || cve_id
+            else cve_id
+        end as advisory_id,
         override_status,
         override_reason,
         source_updated_at as csv_updated_at
@@ -43,23 +51,35 @@ nvd_signals as (
 -- Aggregate OSV signals (package-level)
 osv_signals as (
     select
-        coalesce(package_name, 'UNKNOWN') || ':' || cve_id as advisory_id,
-        bool_or(fix_available) as osv_fix_available,
+        case
+            when package_name is not null then package_name || ':' || cve_id
+            else cve_id
+        end as advisory_id,
+        max(fix_available) as osv_fix_available,
         max(fixed_version) as osv_fixed_version,
         max(notes) as osv_summary
     from observations
     where source_id = 'osv'
-    group by coalesce(package_name, 'UNKNOWN') || ':' || cve_id
+    group by case
+        when package_name is not null then package_name || ':' || cve_id
+        else cve_id
+    end
 ),
 
 -- List contributing sources per advisory
 source_contributions as (
     select
-        coalesce(package_name, 'UNKNOWN') || ':' || cve_id as advisory_id,
+        case
+            when package_name is not null then package_name || ':' || cve_id
+            else cve_id
+        end as advisory_id,
         list(distinct source_id) as contributing_sources
     from observations
     where cve_id is not null
-    group by coalesce(package_name, 'UNKNOWN') || ':' || cve_id
+    group by case
+        when package_name is not null then package_name || ':' || cve_id
+        else cve_id
+    end
 ),
 
 -- Combine all signals

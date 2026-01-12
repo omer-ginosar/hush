@@ -6,6 +6,8 @@ The data.json structure is: {package_name: {cve_id: {fixed_version: ...}}}
 """
 import hashlib
 import json
+import logging
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -13,6 +15,8 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from .base_adapter import BaseAdapter, SourceObservation
+
+logger = logging.getLogger(__name__)
 
 
 class EchoDataAdapter(BaseAdapter):
@@ -58,8 +62,11 @@ class EchoDataAdapter(BaseAdapter):
             return observations
 
         except Exception as e:
-            self._last_error = str(e)
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            self._last_error = error_msg
             self._records_fetched = 0
+            logger.error(f"Echo data adapter failed: {error_msg}")
+            logger.debug(f"Full traceback:\n{traceback.format_exc()}")
             return []
 
     def _load_data(self) -> Dict[str, Any]:

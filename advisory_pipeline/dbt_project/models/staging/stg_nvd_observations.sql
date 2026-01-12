@@ -18,8 +18,9 @@ cleaned as (
         notes,
         run_id,
 
-        -- Derive severity from CVSS score
+        -- Derive severity from CVSS score (NULL-safe)
         case
+            when cvss_score is null then null
             when cvss_score >= 9.0 then 'critical'
             when cvss_score >= 7.0 then 'high'
             when cvss_score >= 4.0 then 'medium'

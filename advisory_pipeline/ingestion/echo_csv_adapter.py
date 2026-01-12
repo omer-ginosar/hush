@@ -6,11 +6,15 @@ Expected CSV columns: cve_id, package, status, fixed_version, internal_status
 """
 import csv
 import hashlib
+import logging
+import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .base_adapter import BaseAdapter, SourceObservation
+
+logger = logging.getLogger(__name__)
 
 
 class EchoCsvAdapter(BaseAdapter):
@@ -54,8 +58,11 @@ class EchoCsvAdapter(BaseAdapter):
             return observations
 
         except Exception as e:
-            self._last_error = str(e)
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            self._last_error = error_msg
             self._records_fetched = 0
+            logger.error(f"Echo CSV adapter failed: {error_msg}")
+            logger.debug(f"Full traceback:\n{traceback.format_exc()}")
             return []
 
     def normalize(self, raw_record: Dict[str, Any], **kwargs) -> Optional[SourceObservation]:

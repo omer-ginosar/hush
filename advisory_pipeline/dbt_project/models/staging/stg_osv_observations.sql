@@ -19,7 +19,7 @@ cleaned as (
         run_id
 
     from source
-    where cve_id is not null or package_name is not null
+    where cve_id is not null and package_name is not null
 )
 
 select * from cleaned

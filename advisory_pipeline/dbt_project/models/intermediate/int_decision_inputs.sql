@@ -19,7 +19,7 @@ with_derived as (
         end as confidence,
 
         -- Count of sources with signals
-        list_count(contributing_sources) as source_count,
+        len(contributing_sources) as source_count,
 
         -- Has any substantive signal
         case
