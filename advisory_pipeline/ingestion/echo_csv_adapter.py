@@ -32,7 +32,7 @@ class EchoCsvAdapter(BaseAdapter):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.source_id = "echo_csv"
-        self.path = Path(config.get("path", "advisory_not_applicable.csv"))
+        self.path = Path(config.get("path", "../data/advisory-not-applicable.csv"))
         self._previous_hash: Optional[str] = None
 
     def fetch(self) -> List[SourceObservation]:

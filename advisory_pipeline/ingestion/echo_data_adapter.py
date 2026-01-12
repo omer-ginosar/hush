@@ -38,7 +38,7 @@ class EchoDataAdapter(BaseAdapter):
         super().__init__(config)
         self.source_id = "echo_data"
         self.url = config.get("url")
-        self.cache_path = Path(config.get("cache_path", "data.json"))
+        self.cache_path = Path(config.get("cache_path", "../data/data.json"))
 
     def fetch(self) -> List[SourceObservation]:
         """Load data.json from cache or URL."""

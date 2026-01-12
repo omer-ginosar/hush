@@ -243,7 +243,7 @@ All bug fixes validated with comprehensive regression tests:
 
 ## Documentation
 
-📄 **[PHASE11_BUG_FIXES.md](advisory_pipeline/PHASE11_BUG_FIXES.md)** - Comprehensive documentation including:
+📄 **[phase-11-bug-fixes.md](../../advisory_pipeline/phase-11-bug-fixes.md)** - Comprehensive documentation including:
 - Detailed bug descriptions with before/after code
 - Impact analysis for each fix
 - Design decisions and rationale
@@ -270,7 +270,7 @@ advisory_pipeline/
 │   ├── nvd_adapter.py                              (exception logging)
 │   └── osv_adapter.py                              (exception logging)
 ├── run_pipeline.py                                 (error handling + validation + paths)
-└── PHASE11_BUG_FIXES.md                           (comprehensive documentation)
+└── phase-11-bug-fixes.md                           (comprehensive documentation)
 ```
 
 **Stats:** 11 files, ~150 lines changed (+184 insertions, -64 deletions)

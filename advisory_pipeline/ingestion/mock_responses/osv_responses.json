@@ -1,16 +1,16 @@
 {
   "vulns": [
     {
-      "id": "GHSA-0001-0001-0001",
+      "id": "GHSA-p2g7-xwvr-rrw3",
       "aliases": [
-        "CVE-2024-0001"
+        "CVE-2020-10735"
       ],
-      "summary": "Buffer overflow allows remote code execution",
+      "summary": "Integer overflow in Python string-to-integer conversion",
       "affected": [
         {
           "package": {
-            "name": "example-package",
-            "ecosystem": "PyPI"
+            "name": "python3.11",
+            "ecosystem": "Debian"
           },
           "ranges": [
             {
@@ -20,7 +20,7 @@
                   "introduced": "0"
                 },
                 {
-                  "fixed": "1.2.3"
+                  "fixed": "3.11.0~rc2-1"
                 }
               ]
             }
@@ -30,55 +30,47 @@
       "references": [
         {
           "type": "FIX",
-          "url": "https://github.com/example/commit/abc123"
+          "url": "https://github.com/python/cpython/issues/95778"
         }
       ]
     },
     {
-      "id": "GHSA-0002-0002-0002",
+      "id": "GHSA-vim-2008-4677",
       "aliases": [
-        "CVE-2024-0003"
+        "CVE-2008-4677"
       ],
-      "summary": "SQL injection in database handler",
+      "summary": "Vim arbitrary command execution vulnerability",
       "affected": [
         {
           "package": {
-            "name": "db-handler",
-            "ecosystem": "npm"
+            "name": "vim",
+            "ecosystem": "Debian"
           },
           "ranges": [
             {
               "type": "ECOSYSTEM",
               "events": [
                 {
-                  "introduced": "1.0.0"
-                },
-                {
-                  "fixed": "2.0.0"
+                  "introduced": "0"
                 }
               ]
             }
           ]
         }
       ],
-      "references": [
-        {
-          "type": "FIX",
-          "url": "https://github.com/example/commit/def456"
-        }
-      ]
+      "references": []
     },
     {
-      "id": "GHSA-0003-0003-0003",
+      "id": "GHSA-curl-2025-14017",
       "aliases": [
-        "CVE-2024-0004"
+        "CVE-2025-14017"
       ],
-      "summary": "Denial of service via crafted input",
+      "summary": "Curl security vulnerability",
       "affected": [
         {
           "package": {
-            "name": "parser-lib",
-            "ecosystem": "PyPI"
+            "name": "curl",
+            "ecosystem": "Debian"
           },
           "ranges": [
             {
@@ -88,7 +80,7 @@
                   "introduced": "0"
                 },
                 {
-                  "fixed": "3.0.0"
+                  "fixed": "8.12.0-1"
                 }
               ]
             }
@@ -98,7 +90,7 @@
       "references": [
         {
           "type": "FIX",
-          "url": "https://github.com/parser/commit/ghi789"
+          "url": "https://github.com/curl/curl/commit/simulated-fix"
         }
       ]
     }

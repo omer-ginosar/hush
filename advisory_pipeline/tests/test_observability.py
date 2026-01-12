@@ -146,7 +146,7 @@ def test_reporter_saves_to_file():
         report_path = reporter.save_report(report, output_dir)
 
         assert report_path.exists()
-        assert report_path.name.startswith("run_report_")
+        assert report_path.name.startswith("run-report-")
         assert report_path.suffix == ".md"
 
         # Verify content was written

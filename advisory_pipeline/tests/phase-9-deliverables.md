@@ -65,7 +65,7 @@ End-to-end pipeline validation:
 
 ### 3. Documentation
 
-#### `tests/README.md` (140 lines)
+#### `tests/readme.md` (140 lines)
 Comprehensive testing guide covering:
 
 **Test Organization**
@@ -219,7 +219,7 @@ tests/test_storage.py .....                                        [100%]
 
 ```
 advisory_pipeline/tests/
-├── README.md                      (new, 140 lines)
+├── readme.md                      (new, 140 lines)
 ├── conftest.py                    (new, 165 lines)
 ├── test_conflict_resolution.py    (new, 310 lines)
 └── test_integration.py            (new, 485 lines)

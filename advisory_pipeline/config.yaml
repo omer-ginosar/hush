@@ -10,11 +10,11 @@ sources:
     type: "json"
     # Fallback to local cache if network unavailable
     url: null  # Replace with actual Echo data.json URL when available
-    cache_path: "../data.json"
+    cache_path: "../data/data.json"
 
   echo_csv:
     type: "csv"
-    path: "../advisory_not_applicable.csv"
+    path: "../data/advisory-not-applicable.csv"
 
   nvd:
     type: "api"

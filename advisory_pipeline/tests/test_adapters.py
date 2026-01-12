@@ -21,7 +21,7 @@ from ingestion import (
 def test_echo_data_adapter():
     """Test Echo data.json adapter can load and normalize data."""
     config = {
-        "cache_path": "../data.json",
+        "cache_path": "../data/data.json",
         "url": None
     }
     adapter = EchoDataAdapter(config)
@@ -51,7 +51,7 @@ def test_echo_data_adapter():
 def test_echo_csv_adapter():
     """Test Echo CSV adapter can load and normalize CSV overrides."""
     config = {
-        "path": "../advisory_not_applicable.csv"
+        "path": "../data/advisory-not-applicable.csv"
     }
     adapter = EchoCsvAdapter(config)
 

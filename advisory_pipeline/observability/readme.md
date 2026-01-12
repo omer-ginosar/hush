@@ -19,7 +19,7 @@ observability/
 ├── metrics.py         # RunMetrics dataclass for tracking run statistics
 ├── quality_checks.py  # SQL-based data quality validation
 ├── reporter.py        # Markdown report generation
-└── README.md          # This file
+└── readme.md          # This file
 ```
 
 ## Components
@@ -117,7 +117,7 @@ SELECT * FROM pipeline_runs WHERE run_id = 'run_20240115_120000';
 
 ### Reports
 
-Markdown reports are saved to `output/run_report_YYYYMMDD_HHMMSS.md`:
+Markdown reports are saved to `output/run-report-YYYYMMDD-HHMMSS.md`:
 
 ```markdown
 # Pipeline Run Report

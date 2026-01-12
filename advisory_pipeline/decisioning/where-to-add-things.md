@@ -353,8 +353,8 @@ If you're unsure where something goes:
    - Existing rules in `rules.py` - Pattern to follow
 
 2. **Read guides**:
-   - `QUICK_EXTENSION_GUIDE.md` - 5-min quick start
-   - `EXTENDING.md` - Detailed with examples
+   - `quick-extension-guide.md` - 5-min quick start
+   - `extending.md` - Detailed with examples
 
 3. **Look at tests**:
    - `tests/test_decisioning_rules.py` - How to test rules

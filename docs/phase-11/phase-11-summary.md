@@ -27,7 +27,7 @@ All 4 critical bugs from the implementation plan have been fixed, tested, and do
    - Added documentation for new `mart_advisory_current_by_cve` view
    - Clarified when to use each view
 
-5. `advisory_pipeline/README.md`
+5. `advisory_pipeline/readme.md`
    - Added snapshot to pipeline stages
    - Updated model list with new views
    - Added usage guidance for package-level vs CVE-level views
@@ -46,7 +46,7 @@ All 4 critical bugs from the implementation plan have been fixed, tested, and do
    - "Worst state wins" priority for aggregation
    - Includes list of affected packages
 
-4. `PHASE11_BUG_FIXES_REAL.md`
+4. `phase-11-bug-fixes-real.md`
    - Comprehensive documentation of all fixes
    - Architecture decisions and rationale
    - Testing procedures and validation steps
@@ -128,14 +128,14 @@ New Files (4):
   advisory_pipeline/dbt_project/snapshots/advisory_state_snapshot.sql
   advisory_pipeline/dbt_project/models/marts/mart_advisory_state_history.sql
   advisory_pipeline/dbt_project/models/marts/mart_advisory_current_by_cve.sql
-  PHASE11_BUG_FIXES_REAL.md
+  phase-11-bug-fixes-real.md
 
 Modified Files (5):
   advisory_pipeline/run_pipeline.py                     (+44 lines)
   advisory_pipeline/dbt_project/dbt_project.yml         (+4 lines)
   advisory_pipeline/dbt_project/models/staging/stg_echo_csv.sql  (~5 lines)
   advisory_pipeline/dbt_project/models/marts/marts.yml  (+33 lines)
-  advisory_pipeline/README.md                           (+8 lines)
+  advisory_pipeline/readme.md                           (+8 lines)
 
 Total: ~140 lines added, ~5 lines modified
 ```
@@ -199,8 +199,8 @@ CVE-2024-0002,,not_applicable,Out of scope for our deployment
 
 ## Documentation
 
-- **Implementation Details**: [PHASE11_BUG_FIXES_REAL.md](PHASE11_BUG_FIXES_REAL.md)
-- **Pipeline README**: [advisory_pipeline/README.md](advisory_pipeline/README.md)
+- **Implementation Details**: [phase-11-bug-fixes-real.md](phase-11-bug-fixes-real.md)
+- **Pipeline README**: [advisory_pipeline/readme.md](../../advisory_pipeline/readme.md)
 - **dbt Models**: [advisory_pipeline/dbt_project/models/marts/marts.yml](advisory_pipeline/dbt_project/models/marts/marts.yml)
 
 ---

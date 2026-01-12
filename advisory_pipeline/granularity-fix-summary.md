@@ -10,10 +10,8 @@ The `mart_advisory_current` table was mixing two different granularity levels:
 
 This violated data modeling best practices and created duplicate CVE entries that confused queries and reports.
 
-See: [ARCHITECTURE_ISSUE_GRANULARITY.md](ARCHITECTURE_ISSUE_GRANULARITY.md)
-
 ## Solution Implemented
-Applied **Option A** from the architecture document: Denormalize CVE-level data to package rows (single granularity: package-level).
+Applied a single-granularity approach: denormalize CVE-level data to package rows (single granularity: package-level).
 
 ### Changes Made
 
@@ -74,7 +72,7 @@ left join nvd_signals nvd on ak.cve_id = nvd.cve_id  -- Denormalize by CVE
 - Updated demo narrative to reflect the fix
 - Added "Granularity Fix Applied" section to summary
 
-#### 5. Updated Documentation: `DEMO.md`
+#### 5. Updated Documentation: `demo.md`
 - Added section explaining the granularity fix
 - Updated example output to show no more duplicate entries
 - Documented benefits of single granularity approach
@@ -153,11 +151,9 @@ Demo successfully runs 3 pipeline iterations showing:
 2. `dbt_project/models/staging/stg_echo_advisories.sql` - Removed non-existent columns
 3. `dbt_project/models/intermediate/int_source_observations.sql` - Fixed echo CTE
 4. `demo.py` - Updated scenario and narrative
-5. `DEMO.md` - Updated documentation
+5. `demo.md` - Updated documentation
 
 ## Next Steps (Optional)
-
-Per Phase 3 of the architecture document:
 
 1. **Create `mart_cve_orphans` table** - Track CVEs with no package context
 2. **Add data quality checks** - Alert on unexpected NULL packages
