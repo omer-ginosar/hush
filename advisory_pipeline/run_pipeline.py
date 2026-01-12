@@ -279,9 +279,9 @@ class AdvisoryPipeline:
         env = os.environ.copy()
         env["PIPELINE_RUN_ID"] = run_id
 
-        # Execute dbt run
+        # Execute dbt run (exclude mart_advisory_state_history which depends on snapshot)
         result = subprocess.run(
-            ["dbt", "run", "--profiles-dir", "."],
+            ["dbt", "run", "--profiles-dir", ".", "--exclude", "mart_advisory_state_history"],
             cwd=dbt_dir,
             env=env,
             capture_output=True,
@@ -339,6 +339,49 @@ class AdvisoryPipeline:
             raise RuntimeError(f"dbt snapshot failed with code {result.returncode}")
 
         logger.info("  dbt snapshots completed successfully")
+
+        # Now run mart_advisory_state_history which depends on the snapshot
+        logger.info("Stage 3c: Populating state history mart from snapshot")
+        self._populate_state_history_mart(run_id)
+
+    def _populate_state_history_mart(self, run_id: str):
+        """
+        Populate mart_advisory_state_history after snapshots have run.
+
+        This runs the mart model that was excluded from the main dbt run
+        because it depends on the snapshot table existing.
+
+        Args:
+            run_id: Pipeline run identifier
+        """
+        script_dir = Path(__file__).parent
+        dbt_dir = script_dir / "dbt_project"
+
+        # Close database connection before dbt runs
+        self.db.close()
+
+        # Set run ID as environment variable for dbt
+        env = os.environ.copy()
+        env["PIPELINE_RUN_ID"] = run_id
+
+        # Execute dbt run for just the history mart
+        result = subprocess.run(
+            ["dbt", "run", "--profiles-dir", ".", "--select", "mart_advisory_state_history"],
+            cwd=dbt_dir,
+            env=env,
+            capture_output=True,
+            text=True
+        )
+
+        # Reconnect database after dbt completes
+        self.db.connect()
+
+        if result.returncode != 0:
+            logger.error(f"dbt run (state history) stdout:\n{result.stdout}")
+            logger.error(f"dbt run (state history) stderr:\n{result.stderr}")
+            raise RuntimeError(f"dbt run for state history failed with code {result.returncode}")
+
+        logger.info("  State history mart populated successfully")
 
     def _export_current_state(self):
         """
@@ -480,28 +523,20 @@ class AdvisoryPipeline:
             """).fetchone()[0]
 
             if snapshot_exists > 0:
-                # Count transitions: records that have both a previous and current version
+                # Count state transitions: advisory_ids with multiple versions
+                # An advisory with multiple versions means its state changed
+                # We count advisories that have at least one expired record (dbt_valid_to != NULL)
+                # that was updated during this run
                 state_changes = conn.execute("""
-                    WITH current_run_records AS (
-                        SELECT advisory_id
-                        FROM main.advisory_state_snapshot
-                        WHERE dbt_valid_from >= (
-                            SELECT max(started_at)
-                            FROM pipeline_runs
-                            WHERE run_id = ?
-                        )
-                    ),
-                    has_history AS (
-                        SELECT DISTINCT curr.advisory_id
-                        FROM current_run_records curr
-                        WHERE EXISTS (
-                            SELECT 1
-                            FROM main.advisory_state_snapshot prev
-                            WHERE prev.advisory_id = curr.advisory_id
-                              AND prev.dbt_valid_to IS NOT NULL
-                        )
-                    )
-                    SELECT count(*) FROM has_history
+                    SELECT COUNT(DISTINCT advisory_id)
+                    FROM main.advisory_state_snapshot
+                    WHERE dbt_valid_to IS NOT NULL  -- Record was superseded (state changed)
+                      AND dbt_updated_at >= (
+                          -- Only count changes from this run
+                          SELECT max(started_at)
+                          FROM pipeline_runs
+                          WHERE run_id = ?
+                      )
                 """, [metrics.run_id]).fetchone()[0]
 
                 metrics.state_changes = state_changes

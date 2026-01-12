@@ -17,6 +17,8 @@ validated as (
         observed_at,
         raw_payload,
         lower(trim(status)) as status,
+        fix_available,
+        fixed_version,
         cvss_score,
         notes,
         run_id,

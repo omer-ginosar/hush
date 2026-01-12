@@ -66,6 +66,24 @@ osv_signals as (
     end
 ),
 
+-- Aggregate echo_data signals (Echo's own advisory data with fixed versions)
+echo_signals as (
+    select
+        case
+            when package_name is not null then package_name || ':' || cve_id
+            else cve_id
+        end as advisory_id,
+        max(fix_available) as echo_fix_available,
+        max(fixed_version) as echo_fixed_version
+    from observations
+    where source_id = 'echo_data'
+      and cve_id is not null
+    group by case
+        when package_name is not null then package_name || ':' || cve_id
+        else cve_id
+    end
+),
+
 -- List contributing sources per advisory
 source_contributions as (
     select
@@ -105,12 +123,16 @@ enriched as (
         osv.osv_fixed_version,
         osv.osv_summary,
 
-        -- Resolved signals (conflict resolution)
-        -- Fix available: TRUE if any source says true
-        coalesce(osv.osv_fix_available, false) as fix_available,
+        -- Echo signals
+        echo.echo_fix_available,
+        echo.echo_fixed_version,
 
-        -- Fixed version: prefer OSV (has package context)
-        osv.osv_fixed_version as fixed_version,
+        -- Resolved signals (conflict resolution)
+        -- Fix available: TRUE if any source says true (prioritize echo, then osv)
+        coalesce(echo.echo_fix_available, osv.osv_fix_available, false) as fix_available,
+
+        -- Fixed version: prefer echo_data (most authoritative for Echo packages), then OSV
+        coalesce(echo.echo_fixed_version, osv.osv_fixed_version) as fixed_version,
 
         -- CVSS: prefer NVD (authoritative)
         nvd.nvd_cvss_score as cvss_score,
@@ -128,6 +150,7 @@ enriched as (
     left join csv_overrides csv on ak.advisory_id = csv.advisory_id
     left join nvd_signals nvd on ak.cve_id = nvd.cve_id
     left join osv_signals osv on ak.advisory_id = osv.advisory_id
+    left join echo_signals echo on ak.advisory_id = echo.advisory_id
     left join source_contributions sc on ak.advisory_id = sc.advisory_id
 )
 
