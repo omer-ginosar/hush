@@ -76,9 +76,9 @@ class EchoCsvAdapter(BaseAdapter):
             SourceObservation or None if invalid
         """
         cve_id = raw_record.get("cve_id", "").strip()
-        package_name = raw_record.get("package", "").strip()
+        package_name = raw_record.get("package", "").strip() or None  # Allow empty package
 
-        if not cve_id or not package_name:
+        if not cve_id:
             return None
 
         # Validate CVE ID format
@@ -86,9 +86,9 @@ class EchoCsvAdapter(BaseAdapter):
             return None
 
         # Generate stable observation ID
-        obs_id = hashlib.md5(
-            f"{self.source_id}:{package_name}:{cve_id}".encode()
-        ).hexdigest()[:16]
+        # Use package_name if available, otherwise just CVE ID
+        id_key = f"{self.source_id}:{package_name}:{cve_id}" if package_name else f"{self.source_id}:{cve_id}"
+        obs_id = hashlib.md5(id_key.encode()).hexdigest()[:16]
 
         # Extract fields
         status = raw_record.get("status", "").strip().lower()

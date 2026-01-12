@@ -125,8 +125,7 @@ left join csv_overrides csv on (
 ### Phase 3: Handle Edge Cases
 
 1. **CVEs with no package info** (rare):
-   - Could create a synthetic package "unknown" or "unassigned"
-   - OR maintain a separate `mart_cve_orphans` table
+   - maintain a separate `mart_cve_orphans` table to be monitored and checked by the data engineering team. this case breaks the data model assumptions and might suggest there is a data quality issue or a modeling bug.
 
 2. **CSV overrides for CVE-only** (like the demo):
    - Match to ALL packages with that CVE

@@ -524,20 +524,19 @@ class AdvisoryPipeline:
 
             if snapshot_exists > 0:
                 # Count state transitions: advisory_ids with multiple versions
-                # An advisory with multiple versions means its state changed
-                # We count advisories that have at least one expired record (dbt_valid_to != NULL)
-                # that was updated during this run
+                # We count advisories where dbt_valid_to was set during this run
+                # (meaning the record was superseded by a new state)
                 state_changes = conn.execute("""
                     SELECT COUNT(DISTINCT advisory_id)
                     FROM main.advisory_state_snapshot
                     WHERE dbt_valid_to IS NOT NULL  -- Record was superseded (state changed)
-                      AND dbt_updated_at >= (
-                          -- Only count changes from this run
-                          SELECT max(started_at)
-                          FROM pipeline_runs
-                          WHERE run_id = ?
+                      AND dbt_valid_to = (
+                          -- dbt_valid_to is set to the timestamp when snapshot ran
+                          -- Match it to the most recent snapshot run
+                          SELECT MAX(dbt_updated_at)
+                          FROM main.advisory_state_snapshot
                       )
-                """, [metrics.run_id]).fetchone()[0]
+                """, []).fetchone()[0]
 
                 metrics.state_changes = state_changes
 
