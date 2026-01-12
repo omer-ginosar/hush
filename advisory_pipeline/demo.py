@@ -190,30 +190,17 @@ def create_csv_override(include_override: bool = False):
     # Write to the path configured in config.yaml
     csv_path = Path("../advisory_not_applicable.csv")
 
-    if not include_override:
-        # No overrides for Run 1 - restore original file
-        # Read the original file and restore it (exclude demo CVEs)
-        original_path = Path("../advisory_not_applicable.csv")
-        if original_path.exists():
-            # Keep original file as-is for Run 1
-            pass
-        return
-
-    # Create override for Run 2
-    # Note: Leave package empty to match NVD-only CVEs (which have NULL package_name)
-    # Use the expected CSV format: cve_id, package, status, fixed_version, internal_status
-
-    # First, read existing CSV to preserve real overrides
+    # Always read existing CSV and filter out demo CVE
     existing_overrides = []
     if csv_path.exists():
         with open(csv_path, "r", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Skip our demo CVE if it exists
+                # Skip our demo CVE - we'll conditionally add it back
                 if row.get("cve_id") != "CVE-2024-0002":
                     existing_overrides.append(row)
 
-    # Write back with demo override added
+    # Write back: existing overrides + optionally the demo override
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[
             "cve_id", "package", "status", "fixed_version", "internal_status"
@@ -224,14 +211,15 @@ def create_csv_override(include_override: bool = False):
         for row in existing_overrides:
             writer.writerow(row)
 
-        # Add demo override (package is empty string to match NULL package_name)
-        writer.writerow({
-            "cve_id": "CVE-2024-0002",
-            "package": "",  # Empty to match NVD-only entry (NULL package_name)
-            "status": "not_applicable",
-            "fixed_version": "",
-            "internal_status": "demo_override"
-        })
+        # Add demo override only in Run 2 (when include_override=True)
+        if include_override:
+            writer.writerow({
+                "cve_id": "CVE-2024-0002",
+                "package": "",  # Empty to match NVD-only entry (NULL package_name)
+                "status": "not_applicable",
+                "fixed_version": "",
+                "internal_status": "demo_override"
+            })
 
 
 def update_osv_with_new_fix():
