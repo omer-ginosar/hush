@@ -2,7 +2,7 @@
 
 Home-assignment repo: a production-style CVE advisory enrichment pipeline built with Python, DuckDB, and dbt.
 
-## 🚀 Overview
+## 🌐 Overview
 
 This pipeline ingests security advisories from multiple sources (Echo data, NVD, OSV), applies deterministic business rules, and produces enriched advisory states with full explainability and state-change history.
 
